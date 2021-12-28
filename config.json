@@ -1,0 +1,18 @@
+{
+    "music": {
+        "netease": {
+            "name": "网易云",
+            "api": "https://netease-cloud-music-api-rilien5e2-xizeyoupan.vercel.app"
+        }
+    },
+    "games": {
+        "csgo": {
+            "name": "Counter-Strike: Global Offensive",
+            "id": 730,
+            "directory": "common\\Counter-Strike Global Offensive\\",
+            "ToCfg": "csgo\\cfg\\",
+            "libraryname": "csgo\\",
+            "exename": "csgo"
+        }
+    }
+}
