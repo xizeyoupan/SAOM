@@ -45,10 +45,7 @@ class NeteaseImpl:
             song_id,
             utils.get_cn_ip())
         ) as song_detail:
-            print(song_detail.url)
             res = await song_detail.json()
-            print(res)
-
             song_url: str = res['data'][0]['url']
 
         if not song_url:
@@ -64,9 +61,11 @@ class NeteaseImpl:
                 song_info['downloading'] = now / total
                 ctx.song_do_download(song_info)
                 stream.write(chunk)
+        
+        stream.seek(0)
 
         song_info["song_url"] = song_url
-        song_info["file_name"] = song_url.split('/')[-1],
+        song_info["file_name"] = song_url.split('/')[-1]
         song_info["content"] = stream
         ctx.song_did_download(song_info)
 

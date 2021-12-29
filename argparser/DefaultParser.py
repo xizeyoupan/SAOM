@@ -12,11 +12,10 @@ class DefaultAction(argparse.Action):
     def __call__(self, parser, namespace, values, option_string=None):
         if self.dest in ['点歌', 's']:
             setattr(namespace, 's', values)
-            asyncio.create_task(self.ctx.ordersong(namespace))
+            self.ctx.order_song(namespace)
         else:
             setattr(namespace, self.dest, values)
 
-        print(self.dest)
 
 class DefaultParser:
     def __init__(self, ctx) -> None:
@@ -29,7 +28,24 @@ class DefaultParser:
             '-m', default='ne', action=DefaultAction, ctx=ctx)
 
     def parse_line(self, line: str) -> argparse.Namespace:
-        return self.parser.parse_args(line.split(' '))
+        args = line.split()
+        end_args = []
+        flag = False
+        for i in args:
+            if i.startswith('-'):
+                if i in ('-s', '-点歌'):
+                    end_args.append(i)
+                    flag = True
+                else:
+                    flag = False
+            else:
+                if flag:
+                    end_args.append(i)
+
+        args = list(filter(lambda x: x not in end_args, args))
+        args.extend(end_args)
+
+        return self.parser.parse_args(args)
 
 
 if __name__ == '__main__':

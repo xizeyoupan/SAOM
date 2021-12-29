@@ -5,6 +5,8 @@ import sys
 from io import StringIO
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
+PRO_PATH = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+CONTENT_PATH = os.path.join(PRO_PATH, 'content')
 
 import utils
 
@@ -30,15 +32,19 @@ class Csgo:
 
         self.cfg_path = os.path.join(utils.get_steam_app_path(
             self.id), self.directory, self.ToCfg)
+        self.wav_path = os.path.join(
+            utils.get_steam_app_path(self.id),
+            self.directory,
+            'voice_input.wav')
 
         self.ctx = ctx
         cfg.write('bind {} "exec saom_status" \n'.format(self.ctx.status_key))
         if self.ctx.hold_to_play:
-            cfg.write("alias +slam_hold_play slam_play_on \n")
-            cfg.write("alias -slam_hold_play slam_play_off \n")
-            cfg.write("bind {} +slam_hold_play \n".format(self.ctx.play_key))
+            cfg.write("alias +saom_hold_play saom_play_on \n")
+            cfg.write("alias -saom_hold_play saom_play_off \n")
+            cfg.write("bind {} +saom_hold_play \n".format(self.ctx.play_key))
         else:
-            cfg.write("bind {} slam_play \n".format(self.ctx.play_key))
+            cfg.write("bind {} saom_play \n".format(self.ctx.play_key))
 
         with open(os.path.join(self.cfg_path, "saom.cfg"), 'w', encoding='utf8') as f:
             cfg.seek(0)
@@ -89,11 +95,20 @@ class Csgo:
         except PermissionError:
             pass
 
+    def trans_wav(self, song_info):
+        self.ctx.set_status(
+            ' - {} 下载完成！正在转换为wav文件...'.format(song_info['song_name']))
+        self.ctx.call_shell('{}/ffmpeg.exe -y -i "{}" -f wav -bitexact -map_metadata -1 -vn -acodec pcm_s16le -ar {} -ac {} "{}"'.format(
+            PRO_PATH,
+            os.path.join(CONTENT_PATH, song_info['file_name']),
+            22050,
+            1,
+            self.wav_path
+        ),
+            song_info
+        )
 
-async def main():
-    async with Csgo(None) as csgo:
-        pass
-
-if __name__ == "__main__":
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(main())
+    def did_call_shell(self, extra):
+        self.ctx.set_status('当前歌曲-{}-{}'.format(
+            extra['song_name'],
+            extra['artist_name']))
