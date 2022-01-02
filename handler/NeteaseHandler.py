@@ -2,30 +2,43 @@ import asyncio
 import json
 import os
 from io import BytesIO
+
 import aiohttp
-import utils
+
+if __name__ == '__main__':
+    import sys
+    sys.path.append(os.path.dirname(
+        os.path.dirname(os.path.realpath(__file__))))
+
+    from SAOM import SAOM
+
+from handler.AbstractHandler import AbstractHandler
+from handler.utils import get_cn_ip
 
 
-class NeteaseImpl:
+class NeteaseHandler(AbstractHandler):
     config_path = os.path.join(os.path.dirname(
         os.path.dirname(os.path.realpath(__file__))), 'config.json')
+
+    def __init__(self, ctx) -> None:
+        self.ctx = ctx
 
     async def __aenter__(self):
         conn = aiohttp.TCPConnector(ssl=False)
         self.session = aiohttp.ClientSession(connector=conn, trust_env=True)
-        self.api = None
         self.get_config()
         return self
 
     def get_config(self) -> None:
         with open(self.config_path, 'r', encoding='utf8') as f:
-            config: json = json.load(f)['music']['netease']
+            config: json = json.load(f)['handler']['netease']
             self.api = config['api']
+            self.name = config['name']
 
-    async def single_song(self, search_key: str, ctx) -> None:
+    async def single_song(self, search_key: str) -> None:
 
         stream = BytesIO()
-        ctx.song_will_search(search_key)
+        self.ctx.song_will_search(search_key)
 
         async with self.session.get(self.api + "/search?keywords={}".format(
             search_key,
@@ -37,19 +50,19 @@ class NeteaseImpl:
             song_name: str = info['result']['songs'][0]['name']
             artist_name: str = info['result']['songs'][0]['artists'][0]['name']
             song_info = {"song_name": song_name, "artist_name": artist_name,
-                         "song_id": song_id, }
+                         "song_id": song_id, "handler_name": self.name}
 
-            ctx.song_did_search(song_info)
+            self.ctx.song_did_search(song_info)
 
         async with self.session.get(self.api + "/song/url?id={}&br=128000&realIP={}".format(
             song_id,
-            utils.get_cn_ip())
+            get_cn_ip())
         ) as song_detail:
             res = await song_detail.json()
             song_url: str = res['data'][0]['url']
 
         if not song_url:
-            ctx.no_copyright(song_info)
+            self.ctx.no_copyright(song_info)
             return
 
         now = 0.0
@@ -59,24 +72,24 @@ class NeteaseImpl:
             async for chunk in resp.content.iter_chunked(size):
                 now += len(chunk)
                 song_info['downloading'] = now / total
-                ctx.song_do_download(song_info)
+                self.ctx.song_do_download(song_info)
                 stream.write(chunk)
-        
+
         stream.seek(0)
 
         song_info["song_url"] = song_url
         song_info["file_name"] = song_url.split('/')[-1]
         song_info["content"] = stream
-        ctx.song_did_download(song_info)
+        self.ctx.song_did_download(song_info)
 
     async def __aexit__(self, exc_type, exc, tb) -> None:
         await self.session.close()
 
 
-async def main():
-    async with NeteaseImpl() as netease:
-        await netease.single_song("asoul 红色高跟鞋", print)
+async def _test():
+    async with NeteaseHandler(SAOM()) as netease:
+        await netease.single_song("asoul 红色高跟鞋")
 
 if __name__ == "__main__":
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(main())
+    loop.run_until_complete(_test())

@@ -1,13 +1,22 @@
 {
-    "music": {
+    "handler": {
         "netease": {
+            "handlerName": "NeteaseHandler",
             "name": "网易云",
+            "shortcut": "ne",
             "api": "https://netease-cloud-music-api-rilien5e2-xizeyoupan.vercel.app"
+        },
+        "qqmusic": {
+            "handlerName": "QQMusicHandler",
+            "name": "QQ音乐",
+            "shortcut": "qq",
+            "api": "http://localhost:3300"
         }
     },
     "games": {
         "csgo": {
             "name": "Counter-Strike: Global Offensive",
+            "className":"CSGO",
             "id": 730,
             "directory": "common\\Counter-Strike Global Offensive\\",
             "ToCfg": "csgo\\cfg\\",
