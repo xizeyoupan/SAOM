@@ -11,12 +11,17 @@
             "name": "QQ音乐",
             "shortcut": "qq",
             "api": "http://localhost:3300"
+        },
+        "bilibili": {
+            "handlerName": "BilibiliHandler",
+            "name": "b站",
+            "shortcut": "b"
         }
     },
     "games": {
         "csgo": {
             "name": "Counter-Strike: Global Offensive",
-            "className":"CSGO",
+            "className": "CSGO",
             "id": 730,
             "directory": "common\\Counter-Strike Global Offensive\\",
             "ToCfg": "csgo\\cfg\\",

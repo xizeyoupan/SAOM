@@ -1,5 +1,4 @@
 *.mp3
 __pycache__
-content
 ffmpeg.exe
 songs.json
