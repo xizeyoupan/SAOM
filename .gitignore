@@ -2,3 +2,8 @@
 __pycache__
 ffmpeg.exe
 songs.json
+*.m4s
+/build
+/dist
+get_ffmpeg.spec
+main.spec
