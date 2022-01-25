@@ -1,17 +1,17 @@
 import random
-from html.parser import HTMLParser
+# from html.parser import HTMLParser
 
 
-class MyhtmlParser(HTMLParser):
-    def __init__(self, *args, **kwargs):
-        super(MyhtmlParser, self).__init__(*args, **kwargs)
-        self.data_list = []
+# class MyhtmlParser(HTMLParser):
+#     def __init__(self, *args, **kwargs):
+#         super(MyhtmlParser, self).__init__(*args, **kwargs)
+#         self.data_list = []
 
-    def handle_data(self, data):
-        self.data_list.append(data)
+#     def handle_data(self, data):
+#         self.data_list.append(data)
 
-    def text(self):
-        return ''.join(self.data_list)
+#     def text(self):
+#         return ''.join(self.data_list)
 
 
 def get_cn_ip():
