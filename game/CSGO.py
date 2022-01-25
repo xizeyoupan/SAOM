@@ -40,6 +40,9 @@ class CSGO(DefaultGamer):
             'voice_input.wav')
 
         self.ctx = ctx
+
+        self.cfg.write(
+            'bind {} "exec saom_story" \n'.format(self.ctx.tell_key))
         self.cfg.write(
             'bind {} "exec saom_status" \n'.format(self.ctx.status_key))
         if self.ctx.hold_to_play:
@@ -49,6 +52,17 @@ class CSGO(DefaultGamer):
                 "bind {} +saom_hold_play \n".format(self.ctx.play_key))
         else:
             self.cfg.write("bind {} saom_play \n".format(self.ctx.play_key))
+
+        if self.ctx.tell_by_wasd and self.ctx.teller_enable:
+            self.cfg.write('bind w "+forward;exec saom_story;" \n')
+            self.cfg.write('bind a "+moveleft;exec saom_story;" \n')
+            self.cfg.write('bind s "+back;exec saom_story;" \n')
+            self.cfg.write('bind d "+moveright;exec saom_story;" \n')
+        else:
+            self.cfg.write('bind w "+forward;" \n')
+            self.cfg.write('bind a "+moveleft;" \n')
+            self.cfg.write('bind s "+back;" \n')
+            self.cfg.write('bind d "+moveright;" \n')
 
         with open(os.path.join(self.cfg_path, "saom.cfg"), 'w', encoding='utf8') as f:
             self.cfg.seek(0)
@@ -84,7 +98,8 @@ class CSGO(DefaultGamer):
                     line = line.strip('\n').split('saom')[-1].strip()
                     if line and '歌名' not in line:
                         self.ctx.parse(line)
-
+                else:
+                    self.ctx.parse(line)
             await asyncio.sleep(0.05)
 
         print('SAOM: CSGO watcher stopped.')
@@ -92,7 +107,14 @@ class CSGO(DefaultGamer):
     def write_status(self):
         try:
             with open(os.path.join(self.cfg_path, "saom_status.cfg"), 'w', encoding='utf8') as f:
-                f.write('say ' + self.ctx.status)
+                f.write(f'say "{self.ctx.status}"')
+        except PermissionError:
+            pass
+
+    def write_story(self, line):
+        try:
+            with open(os.path.join(self.cfg_path, "saom_story.cfg"), 'w', encoding='utf8') as f:
+                f.write(f'say "{line}"')
         except PermissionError:
             pass
 

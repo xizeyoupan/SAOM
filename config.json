@@ -28,5 +28,15 @@
             "libraryname": "csgo\\",
             "exename": "csgo"
         }
+    },
+    "teller": {
+        "zhijiang": {
+            "name": "枝江作文展",
+            "className": "ZhijiangTeller"
+        },
+        "local": {
+            "name": "本地作文展",
+            "className": "LocalTeller"
+        }
     }
 }

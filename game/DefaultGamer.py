@@ -21,6 +21,10 @@ class DefaultGamer(metaclass=ABCMeta):
         pass
 
     @abstractmethod
+    def write_story(self):
+        pass
+
+    @abstractmethod
     def trans_wav(self, song_info):
         pass
 

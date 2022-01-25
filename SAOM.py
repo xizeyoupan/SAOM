@@ -5,6 +5,7 @@ from operator import truediv
 import os
 from io import BytesIO
 
+
 from tinydb import TinyDB, where
 
 from argparser.DefaultParser import DefaultParser
@@ -27,9 +28,13 @@ class SAOM:
         self.hold_to_play = False
         self.play_key = 'N'
         self.status_key = 'L'
+        self.tell_key = 'P'
         self.handler_shortcut = 'ne'
         self.game: DefaultGamer = None
-        self.__set_status("还没有点歌捏 点歌方式: 聊天框内输入 saom -s 歌名")
+        self.teller = None
+        self.teller_enable = False
+        self.tell_by_wasd = True
+        self.set_status("还没有点歌捏 点歌方式: 聊天框内输入 saom -s 歌名")
 
     def set_game(self, game_name):
         if self.game and game_name == self.game.name:
@@ -45,15 +50,33 @@ class SAOM:
                 self.game = getattr(module, v['className'])(self)
                 break
 
+    def set_teller(self, teller_name):
+        with open(CONFIG_PATH, 'r', encoding='utf8') as f:
+            tellers: json = json.load(f)['teller']
+
+        for (k, v) in tellers.items():
+            if v['name'] == teller_name:
+                module = importlib.import_module(
+                    'storyteller.{0}'.format(v['className']))
+                self.teller = getattr(module, v['className'])(self)
+                break
+        if self.teller_enable:
+            asyncio.create_task(self.teller.start_teller())
+
+    def set_story(self, line):
+        self.game.write_story(line)
+
     def set_status(self, message):
-        self.__set_status(message)
+        self.__set_status('SAOM-在线点歌 -已开源- ' + message)
 
     def __set_status(self, message):
-        self.status = 'SAOM-在线点歌 -已开源- ' + message
+        self.status = message
         if self.game:
             self.game.write_status()
 
     def parse(self, line):
+        asyncio.create_task(self.teller.compare(line))
+
         namespace = self.parser.parse_line(line)
         if not namespace:
             return
@@ -133,6 +156,8 @@ class SAOM:
     def stop(self):
         self.game.stop_watch()
         self.game = None
+        self.teller.stop_teller()
+        self.teller = None
 
 
 async def main():

@@ -18,6 +18,7 @@ with open(CONFIG_PATH, encoding='utf8') as f:
     games = list(config['games'].keys())
     handlers = [i['name'] + " - " + i['shortcut']
                 for i in config['handler'].values()]
+    tellers = [i['name'] for i in config['teller'].values()]
 
 layout = [
     [sg.Text("请选择游戏：")],
@@ -39,16 +40,22 @@ layout = [
     [sg.HorizontalSeparator(color='#CCC')],
 
     [sg.Text("请选择默认独轮车：")],
-    [sg.Combo(games, key='-STORYTELLER-', expand_x=True, readonly=True)],
+    [sg.Combo(tellers, key='-STORYTELLER-', expand_x=True,
+              readonly=True, default_value=tellers[0])],
 
     [sg.Text("独轮车默认状态："),
      sg.Combo(["关闭", "开启", ], key='-STORYTELLERENABLE-', size=(10, 10), default_value='关闭', readonly=True)],
+
+    [sg.Text("独轮车绑定方向键："),
+     sg.Combo(["关闭", "开启", ], key='-TELLBYWASD-',
+              size=(10, 10), default_value='开启', readonly=True),
+     sg.Text("说书键："),
+     sg.Combo(["N", "P", "L", "J"], key='-TELLKEY-', expand_x=True, default_value='P')],
 
     [sg.HorizontalSeparator(color='#CCC')],
 
     [sg.Button('启动', key='-START-'),
      sg.Button('停止', key='-STOP-', disabled=True)],
-
 
 ]
 
@@ -68,9 +75,13 @@ async def main():
             saom.handler_shortcut = values['-HANDLER-'].split(' ')[-1]
             saom.status_key = values['-STATUSKEY-']
             saom.play_key = values['-PLAYKEY-']
+            saom.tell_key = values['-TELLKEY-']
             saom.hold_to_play = values['-HOLD-']
+            saom.tell_by_wasd = True if values['-TELLBYWASD-'] == '开启' else False
+            saom.teller_enable = True if values['-STORYTELLERENABLE-'] == '开启' else False
 
             saom.set_game(values['-GAME-'])
+            saom.set_teller(values['-STORYTELLER-'])
             saom.run()
             window.set_title('说唱脚本 - 正在运行')
             window['-START-'].update(disabled=True)
