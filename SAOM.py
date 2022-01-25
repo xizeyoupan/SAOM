@@ -1,11 +1,14 @@
 import asyncio
-import json
-from io import BytesIO
-from tinydb import TinyDB, where
-import os
 import importlib
+import json
+from operator import truediv
+import os
+from io import BytesIO
+
+from tinydb import TinyDB, where
 
 from argparser.DefaultParser import DefaultParser
+from game.DefaultGamer import DefaultGamer
 
 DB_PATH = os.path.join(os.path.dirname(
     os.path.realpath(__file__)), 'content\songs.json')
@@ -21,19 +24,22 @@ db = TinyDB(DB_PATH)
 class SAOM:
     def __init__(self):
         self.parser = DefaultParser()
-        self.chosen_game = 'csgo'
         self.hold_to_play = False
         self.play_key = 'N'
         self.status_key = 'L'
-        self.game = None
+        self.handler_shortcut = 'ne'
+        self.game: DefaultGamer = None
         self.__set_status("还没有点歌捏 点歌方式: 聊天框内输入 saom -s 歌名")
 
-    def set_game(self):
+    def set_game(self, game_name):
+        if self.game and game_name == self.game.name:
+            return
+
         with open(CONFIG_PATH, 'r', encoding='utf8') as f:
             games: json = json.load(f)['games']
 
         for (k, v) in games.items():
-            if k == self.chosen_game:
+            if k == game_name:
                 module = importlib.import_module(
                     'game.{0}'.format(v['className']))
                 self.game = getattr(module, v['className'])(self)
@@ -49,7 +55,10 @@ class SAOM:
 
     def parse(self, line):
         namespace = self.parser.parse_line(line)
-        self.order_song(namespace)
+        if not namespace:
+            return
+        elif namespace.s:
+            self.order_song(namespace)
 
     def no_copyright(self, info):
         self.__set_status('找到了{}-{}，但是{}没有版权（；´д｀）ゞ'.format(
@@ -91,8 +100,11 @@ class SAOM:
 
     async def _order_song(self, namespace):
         handler_shortcut: str = namespace.m
+        if not handler_shortcut:
+            handler_shortcut = self.handler_shortcut
+
         with open(CONFIG_PATH, 'r', encoding='utf8') as f:
-            handlers: json = json.load(f)['handler']
+            handlers: dict = json.load(f)['handler']
 
         for (k, v) in handlers.items():
             if handler_shortcut == v['shortcut']:
@@ -102,7 +114,11 @@ class SAOM:
                 break
 
         async with handler(self) as handler:
-            await handler.single_song(" ".join(namespace.s))
+            try:
+                await handler.single_song(" ".join(namespace.s))
+            except Exception as e:
+                self.set_status(' - {} - 点歌失败！'.format(handler.name))
+                print(e)
 
     async def _call_shell(self, args, extra):
         await asyncio.create_subprocess_shell(args)
@@ -111,15 +127,20 @@ class SAOM:
     def call_shell(self, args, extra=None):
         asyncio.create_task(self._call_shell(args, extra))
 
-    async def run(self):
-        self.set_game()
-        await self.game.start_watch()
+    def run(self):
+        asyncio.create_task(self.game.start_watch())
+
+    def stop(self):
+        self.game.stop_watch()
+        self.game = None
 
 
 async def main():
     s = SAOM()
-    await s.run()
+    s.set_game('csgo')
+    s.run()
 
 if __name__ == '__main__':
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(main())
+    loop.create_task(main())
+    loop.run_forever()

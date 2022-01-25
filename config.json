@@ -20,7 +20,7 @@
     },
     "games": {
         "csgo": {
-            "name": "Counter-Strike: Global Offensive",
+            "name": "csgo",
             "className": "CSGO",
             "id": 730,
             "directory": "common\\Counter-Strike Global Offensive\\",

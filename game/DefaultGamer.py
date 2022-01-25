@@ -1,12 +1,10 @@
 from abc import ABCMeta, abstractmethod
 
-from SAOM import SAOM
-
 
 class DefaultGamer(metaclass=ABCMeta):
 
     @abstractmethod
-    def __init__(self, ctx: SAOM) -> None:
+    def __init__(self, ctx) -> None:
         self.ctx = ctx
         pass
 

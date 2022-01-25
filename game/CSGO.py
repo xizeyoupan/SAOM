@@ -3,6 +3,7 @@ import json
 import os
 import sys
 from io import StringIO
+from SAOM import SAOM
 
 PROJECT_PATH = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 CONTENT_PATH = os.path.join(PROJECT_PATH, 'content')
@@ -12,23 +13,24 @@ from game.DefaultGamer import DefaultGamer
 
 
 class CSGO(DefaultGamer):
-    cfg = StringIO()
-    cfg.write('con_logfile saom_logfile.log \n')
-    cfg.write('alias saom_playlist "exec saom_playlist.cfg" \n')
-    cfg.write("alias saom_play saom_play_on \n")
-    cfg.write('alias saom_play_on "alias saom_play saom_play_off; voice_inputfromfile 1; voice_loopback 1; +voicerecord" \n')
-    cfg.write('alias saom_play_off "-voicerecord; voice_inputfromfile 0; voice_loopback 0; alias saom_play saom_play_on" \n')
 
     config_path = os.path.join(os.path.abspath(
         os.path.dirname(os.path.dirname(__file__))), 'config.json')
 
-    def __init__(self, ctx) -> None:
+    def __init__(self, ctx: SAOM) -> None:
+        self.cfg = StringIO()
+        self.cfg.write('con_logfile saom_logfile.log \n')
+        self.cfg.write('alias saom_playlist "exec saom_playlist.cfg" \n')
+        self.cfg.write("alias saom_play saom_play_on \n")
+        self.cfg.write(
+            'alias saom_play_on "alias saom_play saom_play_off; voice_inputfromfile 1; voice_loopback 1; +voicerecord" \n')
+        self.cfg.write(
+            'alias saom_play_off "-voicerecord; voice_inputfromfile 0; voice_loopback 0; alias saom_play saom_play_on" \n')
+
         self.__running = False
         self.get_config()
         self.log_path = os.path.join(utils.get_steam_app_path(
             self.id), self.directory, self.libraryname, "saom_logfile.log")
-        
-        open(self.log_path, 'w', encoding='utf8').close()
 
         self.cfg_path = os.path.join(utils.get_steam_app_path(
             self.id), self.directory, self.ToCfg)
@@ -70,7 +72,9 @@ class CSGO(DefaultGamer):
         self.log_file.close()
 
     async def start_watch(self) -> None:
+        print('start watch')
         self.__running = True
+        open(self.log_path, 'w', encoding='utf8').close()
 
         self.log_file = open(self.log_path, 'r', encoding='utf8')
         while self.__running:
@@ -81,7 +85,9 @@ class CSGO(DefaultGamer):
                     if line and '歌名' not in line:
                         self.ctx.parse(line)
 
-            await asyncio.sleep(0.5)
+            await asyncio.sleep(0.05)
+
+        print('SAOM: CSGO watcher stopped.')
 
     def write_status(self):
         try:
