@@ -1,61 +1,124 @@
-from asyncore import loop
+import asyncio
+import configparser
 import json
+import logging
 import os
 import sys
+import time
+from ast import literal_eval
 
 import PySimpleGUI as sg
-from async_timeout import asyncio
 
 from SAOM import SAOM
+from utils import get_steam_app_path
+
+logger = logging.getLogger('saom')
+logger.setLevel(logging.DEBUG)
+ch = logging.FileHandler('saom.log', encoding='utf8')
+ch.setLevel(logging.DEBUG)
+formatter = logging.Formatter(
+    '%(name)s:%(levelname)s:%(asctime)s:%(message)s', datefmt='%Y-%m-%d %H:%M:%S')
+ch.setFormatter(formatter)
+logger.addHandler(ch)
+
+CONFIG_PATH = os.path.join(os.path.dirname(
+    os.path.realpath(__file__)), 'config.ini')
+folder_path = os.path.dirname(os.path.realpath(__file__))
+ffmpeg_path = os.path.join(folder_path, 'ffmpeg.exe')
 
 sg.theme('Default1')
 
-CONFIG_PATH = os.path.join(os.path.dirname(
-    os.path.realpath(__file__)), 'config.json')
 
-with open(CONFIG_PATH, encoding='utf8') as f:
-    config = json.load(f)
-    games = list(config['games'].keys())
-    handlers = [i['name'] + " - " + i['shortcut']
-                for i in config['handler'].values()]
-    tellers = [i['name'] for i in config['teller'].values()]
+def open_config_window(config_str: str):
+    config = configparser.ConfigParser()
+    config.read(CONFIG_PATH, encoding='utf-8')
+    c = config[config_str]
+    layout = []
+    for k, v in c.items():
+        v = literal_eval(v)
+        alias = v.get('alias', k)
+        if v['type'] == 'str':
+            layout.append([sg.Text(alias)])
+            layout.append([sg.Input(default_text=v['value'],
+                                    key=f'-{k}-', disabled=v['disabled'])])
+        if v['type'] == 'multiline':
+            layout.append([sg.Text(alias)])
+            layout.append([sg.Multiline(default_text=v['value'],
+                                        key=f'-{k}-', disabled=v['disabled'])])
+        elif v['type'] == 'bool':
+            layout.append([sg.Checkbox(default=v['value'],
+                                       text=alias, key=f'-{k}-', disabled=v['disabled'])])
+
+    layout.append([sg.Button('保存', key='-SAVECONFIG-'),
+                   sg.Button('取消', key='-CANCEL-', ), ])
+    w = sg.Window(f"配置{config_str}", layout, modal=True)
+
+    event, values = w.read()
+
+    if event in (sg.WIN_CLOSED, '-CANCEL-'):
+        pass
+    elif event == '-SAVECONFIG-':
+        logger.debug(f'{__file__}:{config_str} save config:{values}')
+        for k, v in values.items():
+            _ = literal_eval(config[config_str][k.strip('-')])
+            _['value'] = v
+            config[config_str][k.strip('-')] = str(_)
+        with open(CONFIG_PATH, 'w', encoding='utf8') as f:
+            config.write(f)
+
+    w.close()
+
+
+if not os.path.exists(ffmpeg_path):
+    sg.popup('ffmpeg不存在，请执行第一次运行脚本', title='ffmpeg不存在')
+    sys.exit()
+
+
+config = configparser.ConfigParser()
+config.read(CONFIG_PATH, encoding='utf-8')
+_ = config.sections()
+section_map = {}
+games = []
+handlers = []
+storytellers = []
+for i in _:
+    name = literal_eval(config[i]['name'])['value']
+    if i.startswith('game'):
+        games.append(name)
+    elif i.startswith('handler'):
+        handlers.append(name)
+    elif i.startswith('storyteller'):
+        storytellers.append(name)
+    section_map[name] = i
+
 
 layout = [
     [sg.Text("请选择游戏：")],
     [sg.Combo(games, key='-GAME-', expand_x=True,
-              readonly=True, default_value=games[0])],
+              readonly=True, default_value=games[0]),
+     sg.Button('设置', key='-GAMECONFIG-')],
 
-    [sg.Text("信息显示键(可自定义)："),
-        sg.Combo(["N", "P", "L", "J"], key='-STATUSKEY-', size=(10, 10), default_value='L')],
     [sg.HorizontalSeparator(color='#CCC')],
 
     [sg.Text("请选择默认音乐api：")],
     [sg.Combo(handlers, key='-HANDLER-', expand_x=True,
-              readonly=True, default_value=handlers[0])],
-
-    [sg.Checkbox("按住键盘播放模式", key='-HOLD-', default=False),
-     sg.Text("播放键(可自定义)："),
-     sg.Combo(["N", "P", "L", "J"], key='-PLAYKEY-', expand_x=True, default_value='N')],
+              readonly=True, default_value=handlers[0]),
+     sg.Button('设置', key='-HANDLERCONFIG-')],
 
     [sg.HorizontalSeparator(color='#CCC')],
 
     [sg.Text("请选择默认独轮车：")],
-    [sg.Combo(tellers, key='-STORYTELLER-', expand_x=True,
-              readonly=True, default_value=tellers[0])],
-
-    [sg.Text("独轮车默认状态："),
-     sg.Combo(["关闭", "开启", ], key='-STORYTELLERENABLE-', size=(10, 10), default_value='关闭', readonly=True)],
-
-    [sg.Text("独轮车绑定方向键："),
-     sg.Combo(["关闭", "开启", ], key='-TELLBYWASD-',
-              size=(10, 10), default_value='开启', readonly=True),
-     sg.Text("说书键："),
-     sg.Combo(["N", "P", "L", "J"], key='-TELLKEY-', expand_x=True, default_value='P')],
+    [sg.Combo(storytellers, key='-STORYTELLER-', expand_x=True,
+              readonly=True, default_value=storytellers[0]),
+     sg.Button('设置', key='-STORYTELLERCONFIG-')],
 
     [sg.HorizontalSeparator(color='#CCC')],
 
     [sg.Button('启动', key='-START-'),
-     sg.Button('停止', key='-STOP-', disabled=True)],
+     sg.Button('停止', key='-STOP-', disabled=True),
+     sg.Button('cfg目录', key='-OPENCFGFOLDER-'),
+     sg.Button('gamelog', key='-OPENGAMELOG-'),
+     ],
 
 ]
 
@@ -71,18 +134,37 @@ async def main():
 
         if event == sg.WIN_CLOSED:
             break
+        elif event == '-GAMECONFIG-':
+            open_config_window(section_map[values['-GAME-']])
+        elif event == '-HANDLERCONFIG-':
+            open_config_window(section_map[values['-HANDLER-']])
+        elif event == '-STORYTELLERCONFIG-':
+            open_config_window(section_map[values['-STORYTELLER-']])
+        elif event == '-OPENCFGFOLDER-':
+            config = configparser.ConfigParser()
+            config.read(CONFIG_PATH, encoding='utf-8')
+            _game = config[section_map[values['-GAME-']]]
+            _game = dict(_game)
+            for k, v in _game.items():
+                _game[k] = literal_eval(v)
+            cfg_path = os.path.join(get_steam_app_path(_game['id']['value']),
+                                    _game['directory']['value'], _game['tocfg']['value'], 'saom.cfg').replace('/', '\\')
+            os.system(f'explorer /select,"{cfg_path}"')
+        elif event == '-OPENGAMELOG-':
+            config = configparser.ConfigParser()
+            config.read(CONFIG_PATH, encoding='utf-8')
+            _game = config[section_map[values['-GAME-']]]
+            _game = dict(_game)
+            for k, v in _game.items():
+                _game[k] = literal_eval(v)
+            game_log_path = os.path.join(get_steam_app_path(_game['id']['value']),
+                                         _game['directory']['value'], _game['libraryname']['value'], "saom_logfile.log").replace('/', '\\')
+            os.system(f'explorer /select,"{game_log_path}"')
         elif event == '-START-':
-            saom.handler_shortcut = values['-HANDLER-'].split(' ')[-1]
-            saom.status_key = values['-STATUSKEY-']
-            saom.play_key = values['-PLAYKEY-']
-            saom.tell_key = values['-TELLKEY-']
-            saom.hold_to_play = values['-HOLD-']
-            saom.tell_by_wasd = True if values['-TELLBYWASD-'] == '开启' else False
-            saom.teller_enable = True if values['-STORYTELLERENABLE-'] == '开启' else False
+            saom.start(section_map[values['-GAME-']],
+                       section_map[values['-HANDLER-']],
+                       section_map[values['-STORYTELLER-']])
 
-            saom.set_game(values['-GAME-'])
-            saom.set_teller(values['-STORYTELLER-'])
-            saom.run()
             window.set_title('说唱脚本 - 正在运行')
             window['-START-'].update(disabled=True)
             window['-STOP-'].update(disabled=False)

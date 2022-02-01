@@ -7,3 +7,5 @@ songs.json
 /dist
 get_ffmpeg.spec
 main.spec
+.vscode
+*.log

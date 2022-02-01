@@ -11,13 +11,17 @@ class AbstractTeller(metaclass=ABCMeta):
         self.ctx = ctx
 
     @abstractmethod
-    def start_teller(self):
+    async def start(self):
         pass
 
     @abstractmethod
-    def stop_teller(self):
+    def stop(self):
         pass
 
     @abstractmethod
     def compare(self, line: str):
+        pass
+
+    @abstractmethod
+    def parse(self, line: str):
         pass

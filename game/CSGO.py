@@ -1,92 +1,106 @@
+from ast import literal_eval
 import asyncio
 import json
+import logging
 import os
 import sys
+import configparser
 from io import StringIO
 from SAOM import SAOM
+from game.DefaultGame import DefaultGame
+from utils import get_value, get_steam_app_path
 
+logger = logging.getLogger(f"saom.{__name__}")
 PROJECT_PATH = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 CONTENT_PATH = os.path.join(PROJECT_PATH, 'content')
 
-import game.utils as utils
-from game.DefaultGamer import DefaultGamer
 
-
-class CSGO(DefaultGamer):
+class CSGO(DefaultGame):
 
     config_path = os.path.join(os.path.abspath(
-        os.path.dirname(os.path.dirname(__file__))), 'config.json')
+        os.path.dirname(os.path.dirname(__file__))), 'config.ini')
 
     def __init__(self, ctx: SAOM) -> None:
+        self.get_config()
         self.cfg = StringIO()
-        self.cfg.write('con_logfile saom_logfile.log \n')
-        self.cfg.write('alias saom_playlist "exec saom_playlist.cfg" \n')
-        self.cfg.write("alias saom_play saom_play_on \n")
+        self.cfg.write('con_logfile saom_logfile.log\n')
+        self.cfg.write('alias saom_playlist "exec saom_playlist.cfg"\n')
+        self.cfg.write("alias saom_play saom_play_on\n")
         self.cfg.write(
-            'alias saom_play_on "alias saom_play saom_play_off; voice_inputfromfile 1; voice_loopback 1; +voicerecord" \n')
+            'alias saom_play_on "alias saom_play saom_play_off; voice_inputfromfile 1; voice_loopback 1; +voicerecord"\n')
         self.cfg.write(
-            'alias saom_play_off "-voicerecord; voice_inputfromfile 0; voice_loopback 0; alias saom_play saom_play_on" \n')
+            'alias saom_play_off "-voicerecord; voice_inputfromfile 0; voice_loopback 0; alias saom_play saom_play_on"\n')
 
         self.__running = False
-        self.get_config()
-        self.log_path = os.path.join(utils.get_steam_app_path(
-            self.id), self.directory, self.libraryname, "saom_logfile.log")
+        self.log_path = os.path.join(get_steam_app_path(self.config['id']['value']),
+                                     self.config['directory']['value'], self.config['libraryname']['value'], "saom_logfile.log")
 
-        self.cfg_path = os.path.join(utils.get_steam_app_path(
-            self.id), self.directory, self.ToCfg)
+        self.cfg_path = os.path.join(get_steam_app_path(self.config['id']['value']),
+                                     self.config['directory']['value'], self.config['tocfg']['value'])
         self.wav_path = os.path.join(
-            utils.get_steam_app_path(self.id),
-            self.directory,
+            get_steam_app_path(self.config['id']['value']),
+            self.config['directory']['value'],
             'voice_input.wav')
 
         self.ctx = ctx
+        self.binds: str = self.config['binds']['value']
 
-        self.cfg.write(
-            'bind {} "exec saom_story" \n'.format(self.ctx.tell_key))
-        self.cfg.write(
-            'bind {} "exec saom_status" \n'.format(self.ctx.status_key))
-        if self.ctx.hold_to_play:
-            self.cfg.write("alias +saom_hold_play saom_play_on \n")
-            self.cfg.write("alias -saom_hold_play saom_play_off \n")
-            self.cfg.write(
-                "bind {} +saom_hold_play \n".format(self.ctx.play_key))
+        if self.ctx.handler.config['holdtoplay']['value']:
+            self.cfg.write("alias +saom_hold_play saom_play_on\n")
+            self.cfg.write("alias -saom_hold_play saom_play_off\n")
+            self.binds = self.binds.replace('播放音乐', '+saom_hold_play')
         else:
-            self.cfg.write("bind {} saom_play \n".format(self.ctx.play_key))
+            self.binds = self.binds.replace('播放音乐', '+saom_play')
 
-        if self.ctx.tell_by_wasd and self.ctx.teller_enable:
-            self.cfg.write('bind w "+forward;exec saom_story;" \n')
-            self.cfg.write('bind a "+moveleft;exec saom_story;" \n')
-            self.cfg.write('bind s "+back;exec saom_story;" \n')
-            self.cfg.write('bind d "+moveright;exec saom_story;" \n')
-        else:
-            self.cfg.write('bind w "+forward;" \n')
-            self.cfg.write('bind a "+moveleft;" \n')
-            self.cfg.write('bind s "+back;" \n')
-            self.cfg.write('bind d "+moveright;" \n')
+        self.cfg.write(self.binds)
 
         with open(os.path.join(self.cfg_path, "saom.cfg"), 'w', encoding='utf8') as f:
             self.cfg.seek(0)
             f.write(self.cfg.read())
             self.cfg.close()
 
-        self.write_status()
+        asyncio.create_task(self.start())
+        self.write_status('启动成功！')
+
+    @ property
+    def default_config(self):
+        return {
+            "name": {'value': "csgo", "type": "str", "disabled": True},
+            "classname": {'value': self.__class__.__name__, "type": "str", "disabled": True},
+            "id": {'value': "730", "type": "str", "disabled": True},
+            "directory": {'value': "common\\Counter-Strike Global Offensive\\", "type": "str", "disabled": True},
+            "tocfg": {'value': "csgo\\cfg\\", "type": "str", "disabled": True},
+            "libraryname": {'value': "csgo\\", "type": "str", "disabled": True},
+            "statuskey": {'value': "exec saom_status", "alias": "信息显示绑定指令", "type": "str", "disabled": True},
+            "tellkey": {'value': "exec saom_story", "alias": "说书绑定指令", "type": "str", "disabled": True},
+            "playkey": {'value': "播放音乐", "alias": "音乐播放绑定指令\nsaom_play/saom_hold_play (不按住播放/按住播放)\n下面绑定时输入`播放音乐`即可", "type": "str", "disabled": True},
+            "binds": {'value': 'bind "p" "exec saom_story"\nbind "l" "exec saom_status"\nbind "n" "播放音乐"\n', "alias": "绑定指令", "type": "multiline", "disabled": False},
+        }
 
     def get_config(self) -> None:
-        with open(self.config_path, 'r', encoding='utf8') as f:
-            config: json = json.load(f)['games']['csgo']
-            self.directory = config['directory']
-            self.ToCfg = config['ToCfg']
-            self.libraryname = config['libraryname']
-            self.exename = config['exename']
-            self.id = config['id']
-            self.name = config['name']
+        config = configparser.ConfigParser()
+        config.read(self.config_path, encoding='utf-8')
+        self.config = config[f'game.{self.__class__.__name__}']
+        self.config = dict(self.config)
+        for k, v in self.config.items():
+            self.config[k] = literal_eval(v)
 
-    def stop_watch(self) -> None:
+    def save_config(self, config: dict) -> None:
+        config_parser = configparser.ConfigParser()
+        config_parser.read(self.config_path, encoding='utf-8')
+        config_parser[f'game.{self.__class__.__name__}'] = config
+        with open(self.config_path, 'w', encoding='utf-8') as f:
+            config_parser.write(f)
+
+    def stop(self) -> None:
         self.__running = False
         self.log_file.close()
+        open(os.path.join(self.cfg_path, "saom_story.cfg"), 'w').close()
+        open(os.path.join(self.cfg_path, "saom_status.cfg"), 'w').close()
+        logger.debug('stop.')
 
-    async def start_watch(self) -> None:
-        print('start watch')
+    async def start(self) -> None:
+        logger.debug('start.')
         self.__running = True
         open(self.log_path, 'w', encoding='utf8').close()
 
@@ -94,45 +108,41 @@ class CSGO(DefaultGamer):
         while self.__running:
             lines = self.log_file.readlines()
             for line in lines:
-                if 'saom' in line.split():
-                    line = line.strip('\n').split('saom')[-1].strip()
-                    if line and '歌名' not in line:
-                        self.ctx.parse(line)
-                else:
-                    self.ctx.parse(line)
-            await asyncio.sleep(0.05)
+                if 'SAOM - 说唱脚本- ddl.ink/saom' in line:
+                    continue
+                self.ctx.handler.prase(line)
+                self.ctx.storyteller.parse(line)
+            await asyncio.sleep(0.1)
 
-        print('SAOM: CSGO watcher stopped.')
-
-    def write_status(self):
+    def write_status(self, mesage: str, extra: bool = True):
         try:
             with open(os.path.join(self.cfg_path, "saom_status.cfg"), 'w', encoding='utf8') as f:
-                f.write(f'say "{self.ctx.status}"')
+                if extra:
+                    f.write(f'say "SAOM - 说唱脚本- ddl.ink/saom  {mesage}"')
+                else:
+                    f.write(f'say "{mesage}"')
         except PermissionError:
             pass
 
-    def write_story(self, line):
+    def write_story(self, line: str):
         try:
             with open(os.path.join(self.cfg_path, "saom_story.cfg"), 'w', encoding='utf8') as f:
                 f.write(f'say "{line}"')
         except PermissionError:
             pass
 
-    def trans_wav(self, song_info):
-        self.ctx.set_status(
-            ' - {} 下载完成！正在转换为wav文件...'.format(song_info['song_name']))
-
-        self.ctx.call_shell('{}/ffmpeg.exe -y -i "{}" -f wav -bitexact -map_metadata -1 -vn -acodec pcm_s16le -ar {} -ac {} "{}"'.format(
+    async def trans_wav(self, song_info):
+        args = '{}/ffmpeg.exe -y -i "{}" -f wav -bitexact -map_metadata -1 -vn -acodec pcm_s16le -ar {} -ac {} "{}"'.format(
             PROJECT_PATH,
             os.path.join(CONTENT_PATH, song_info['file_name']),
             22050,
             1,
             self.wav_path
-        ),
-            song_info
         )
 
-    def did_call_shell(self, extra):
-        self.ctx.set_status('当前歌曲-{}-{}'.format(
-            extra['song_name'],
-            extra['artist_name']))
+        await asyncio.create_subprocess_shell(args)
+        logger.debug(f'{song_info["file_name"]} to wav.')
+
+
+if __name__ == '__main__':
+    CSGO(SAOM())
