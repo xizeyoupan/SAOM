@@ -1,14 +1,18 @@
-from ast import literal_eval
 import asyncio
+import configparser
 import json
 import logging
 import os
+import shutil
 import sys
-import configparser
+from ast import literal_eval
 from io import StringIO
+from tempfile import TemporaryDirectory
+
 from SAOM import SAOM
+from utils import get_steam_app_path
+
 from game.DefaultGame import DefaultGame
-from utils import get_value, get_steam_app_path
 
 logger = logging.getLogger(f"saom.{__name__}")
 PROJECT_PATH = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
@@ -21,17 +25,10 @@ class CSGO(DefaultGame):
         os.path.dirname(os.path.dirname(__file__))), 'config.ini')
 
     def __init__(self, ctx: SAOM) -> None:
+        # self.save_config(self.default_config)
         self.get_config()
-        self.cfg = StringIO()
-        self.cfg.write('con_logfile saom_logfile.log\n')
-        self.cfg.write('alias saom_playlist "exec saom_playlist.cfg"\n')
-        self.cfg.write("alias saom_play saom_play_on\n")
-        self.cfg.write(
-            'alias saom_play_on "alias saom_play saom_play_off; voice_inputfromfile 1; voice_loopback 1; +voicerecord"\n')
-        self.cfg.write(
-            'alias saom_play_off "-voicerecord; voice_inputfromfile 0; voice_loopback 0; alias saom_play saom_play_on"\n')
-
         self.__running = False
+
         self.log_path = os.path.join(get_steam_app_path(self.config['id']['value']),
                                      self.config['directory']['value'], self.config['libraryname']['value'], "saom_logfile.log")
 
@@ -43,22 +40,6 @@ class CSGO(DefaultGame):
             'voice_input.wav')
 
         self.ctx = ctx
-        self.binds: str = self.config['binds']['value']
-
-        if self.ctx.handler.config['holdtoplay']['value']:
-            self.cfg.write("alias +saom_hold_play saom_play_on\n")
-            self.cfg.write("alias -saom_hold_play saom_play_off\n")
-            self.binds = self.binds.replace('播放音乐', '+saom_hold_play')
-        else:
-            self.binds = self.binds.replace('播放音乐', '+saom_play')
-
-        self.cfg.write(self.binds)
-
-        with open(os.path.join(self.cfg_path, "saom.cfg"), 'w', encoding='utf8') as f:
-            self.cfg.seek(0)
-            f.write(self.cfg.read())
-            self.cfg.close()
-
         asyncio.create_task(self.start())
         self.write_status('启动成功！')
 
@@ -74,6 +55,7 @@ class CSGO(DefaultGame):
             "statuskey": {'value': "exec saom_status", "alias": "信息显示绑定指令", "type": "str", "disabled": True},
             "tellkey": {'value': "exec saom_story", "alias": "说书绑定指令", "type": "str", "disabled": True},
             "playkey": {'value': "播放音乐", "alias": "音乐播放绑定指令\nsaom_play/saom_hold_play (不按住播放/按住播放)\n下面绑定时输入`播放音乐`即可", "type": "str", "disabled": True},
+            "wavmaxsize": {'value': "100", "alias": "音乐最大体积(MB)，过大游戏可能会崩溃\n100约为40分钟。", "type": "str", "disabled": False},
             "binds": {'value': 'bind "p" "exec saom_story"\nbind "l" "exec saom_status"\nbind "n" "播放音乐"\n', "alias": "绑定指令", "type": "multiline", "disabled": False},
         }
 
@@ -102,6 +84,9 @@ class CSGO(DefaultGame):
     async def start(self) -> None:
         logger.debug('start.')
         self.__running = True
+        self.get_config()
+        self.write_cfg()
+
         open(self.log_path, 'w', encoding='utf8').close()
 
         self.log_file = open(self.log_path, 'r', encoding='utf8')
@@ -110,9 +95,35 @@ class CSGO(DefaultGame):
             for line in lines:
                 if 'SAOM - 说唱脚本- ddl.ink/saom' in line:
                     continue
-                self.ctx.handler.prase(line)
+                self.ctx.handler.parse(line)
                 self.ctx.storyteller.parse(line)
             await asyncio.sleep(0.1)
+
+    def write_cfg(self) -> None:
+        self.cfg = StringIO()
+        self.cfg.write('con_logfile saom_logfile.log\n')
+        self.cfg.write('alias saom_playlist "exec saom_playlist.cfg"\n')
+        self.cfg.write("alias saom_play saom_play_on\n")
+        self.cfg.write(
+            'alias saom_play_on "alias saom_play saom_play_off; voice_inputfromfile 1; voice_loopback 1; +voicerecord"\n')
+        self.cfg.write(
+            'alias saom_play_off "-voicerecord; voice_inputfromfile 0; voice_loopback 0; alias saom_play saom_play_on"\n')
+
+        self.binds: str = self.config['binds']['value']
+
+        if self.ctx.handler.config['holdtoplay']['value']:
+            self.cfg.write("alias +saom_hold_play saom_play_on\n")
+            self.cfg.write("alias -saom_hold_play saom_play_off\n")
+            self.binds = self.binds.replace('播放音乐', '+saom_hold_play')
+        else:
+            self.binds = self.binds.replace('播放音乐', 'saom_play')
+
+        self.cfg.write(self.binds)
+
+        with open(os.path.join(self.cfg_path, "saom.cfg"), 'w', encoding='utf8') as f:
+            self.cfg.seek(0)
+            f.write(self.cfg.read())
+            self.cfg.close()
 
     def write_status(self, mesage: str, extra: bool = True):
         try:
@@ -131,17 +142,39 @@ class CSGO(DefaultGame):
         except PermissionError:
             pass
 
-    async def trans_wav(self, song_info):
-        args = '{}/ffmpeg.exe -y -i "{}" -f wav -bitexact -map_metadata -1 -vn -acodec pcm_s16le -ar {} -ac {} "{}"'.format(
-            PROJECT_PATH,
-            os.path.join(CONTENT_PATH, song_info['file_name']),
-            22050,
-            1,
-            self.wav_path
-        )
+    async def trans_wav(self, song_info) -> int:
+        with TemporaryDirectory() as temp_path:
+            args = '{}/ffmpeg.exe -y -i "{}" -f wav -bitexact -map_metadata -1 -vn -acodec pcm_s16le -ar {} -ac {} "{}"'.format(
+                PROJECT_PATH,
+                os.path.join(CONTENT_PATH, song_info['file_name']),
+                22050,
+                1,
+                os.path.join(temp_path, 'temp.wav')
+            )
 
-        await asyncio.create_subprocess_shell(args)
-        logger.debug(f'{song_info["file_name"]} to wav.')
+            process = await asyncio.create_subprocess_shell(args)
+            await process.wait()
+
+            fsize = os.path.getsize(os.path.join(temp_path, 'temp.wav'))
+            fsize = fsize / (1024 * 1024)
+
+            if fsize > float(self.config['wavmaxsize']['value']):
+                args = '{}/ffmpeg.exe -y -i "{}" -f wav -bitexact -map_metadata -1 -vn -acodec pcm_s16le -ar {} -ac {} "{}"'.format(
+                    PROJECT_PATH,
+                    os.path.join(CONTENT_PATH, 'oversize.mp3'),
+                    22050,
+                    1,
+                    self.wav_path
+                )
+                process = await asyncio.create_subprocess_shell(args)
+                await process.wait()
+                logger.warning(
+                    f'{song_info["file_name"]} 超过限制大小，已转换为oversize.mp3.')
+                return -1
+            else:
+                shutil.move(os.path.join(temp_path, 'temp.wav'), self.wav_path)
+                logger.debug(f'{song_info["file_name"]} to wav.')
+                return 0
 
 
 if __name__ == '__main__':

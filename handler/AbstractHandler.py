@@ -26,3 +26,7 @@ class AbstractHandler(metaclass=ABCMeta):
     @abstractmethod
     def stop(self):
         pass
+
+    @abstractmethod
+    def parse(self, line: str):
+        pass

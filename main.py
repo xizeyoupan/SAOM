@@ -66,6 +66,9 @@ def open_config_window(config_str: str):
         with open(CONFIG_PATH, 'w', encoding='utf8') as f:
             config.write(f)
 
+        sg.popup('载入成功，请在游戏内发送`exec saom`指令ヾ(≧▽≦*)',
+                 title='', auto_close=True, auto_close_duration=2)
+
     w.close()
 
 
@@ -116,13 +119,14 @@ layout = [
 
     [sg.Button('启动', key='-START-'),
      sg.Button('停止', key='-STOP-', disabled=True),
+     sg.Button('重启', key='-RESTART-', disabled=True, visible=False),
      sg.Button('cfg目录', key='-OPENCFGFOLDER-'),
      sg.Button('gamelog', key='-OPENGAMELOG-'),
      ],
 
 ]
 
-window = sg.Window('说唱脚本', layout, size=(400, 600))
+window = sg.Window('说唱脚本v1.0', layout, size=(400, 600))
 
 saom = SAOM()
 
@@ -136,10 +140,13 @@ async def main():
             break
         elif event == '-GAMECONFIG-':
             open_config_window(section_map[values['-GAME-']])
+            layout[-1][2].click()
         elif event == '-HANDLERCONFIG-':
             open_config_window(section_map[values['-HANDLER-']])
+            layout[-1][2].click()
         elif event == '-STORYTELLERCONFIG-':
             open_config_window(section_map[values['-STORYTELLER-']])
+            layout[-1][2].click()
         elif event == '-OPENCFGFOLDER-':
             config = configparser.ConfigParser()
             config.read(CONFIG_PATH, encoding='utf-8')
@@ -165,14 +172,21 @@ async def main():
                        section_map[values['-HANDLER-']],
                        section_map[values['-STORYTELLER-']])
 
-            window.set_title('说唱脚本 - 正在运行')
+            window.set_title('说唱脚本v1.0 - 正在运行')
             window['-START-'].update(disabled=True)
+            window['-RESTART-'].update(disabled=False)
             window['-STOP-'].update(disabled=False)
         elif event == '-STOP-':
-            window.set_title('说唱脚本')
+            window.set_title('说唱脚本v1.0')
             window['-START-'].update(disabled=False)
+            window['-RESTART-'].update(disabled=True)
             window['-STOP-'].update(disabled=True)
             saom.stop()
+        elif event == '-RESTART-':
+            saom.stop()
+            saom.start(section_map[values['-GAME-']],
+                       section_map[values['-HANDLER-']],
+                       section_map[values['-STORYTELLER-']])
 
     window.close()
 

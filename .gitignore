@@ -9,3 +9,4 @@ get_ffmpeg.spec
 main.spec
 .vscode
 *.log
+!oversize.mp3

@@ -98,7 +98,7 @@ class ZhijiangTeller(AbstractTeller):
 
             line = self.contents[0]['content'].popleft()
             self.current_line = line.strip()[:80]
-            self.ctx.set_story(self.current_line)
+            self.ctx.game.write_story(self.current_line)
             await self.check()
 
     def __del__(self):

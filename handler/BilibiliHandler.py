@@ -76,15 +76,15 @@ class BilibiliHandler(AbstractHandler):
         namespace = self.ctx.parser.parse_line(line)
         if namespace.s:
             asyncio.create_task(self.single_song(namespace.s))
-            logger.debug(f'search {namespace.s}.')
 
     def __del__(self):
         asyncio.create_task(self.session.close())
 
     async def single_song(self, search_key: str) -> None:
+        logger.debug(f'search {search_key}.')
         stream = BytesIO()
         self.ctx.game.write_status(
-            f'接到指令！ 正在搜索： {search_key}，{self.config["name"]}')
+            f'接到指令！ 正在搜索： {search_key}，{self.config["name"]["value"]}')
 
         async with self.session.get('https://api.bilibili.com/x/web-interface/search/all/v2?keyword={}'.format(search_key)) as resp:
             video_json = (await resp.json())['data']['result'][10]['data']
@@ -97,7 +97,7 @@ class BilibiliHandler(AbstractHandler):
             duration = p['duration']
             cid = p['cid']
             title = p['part']
-            song_info = {"song_name": title, "handler_name": self.config['name'],
+            song_info = {"song_name": title, "handler_name": self.config['name']['value'],
                          "artist_name": author, "song_id": bvid}
 
         params = {'bvid': bvid, 'cid': cid,
@@ -134,12 +134,18 @@ class BilibiliHandler(AbstractHandler):
         with open(os.path.join(CONTENT_PATH, song_info['file_name']), 'wb') as f:
             f.write(stream.read())
 
-        await self.ctx.game.trans_wav(song_info)
-        db.insert(song_info)
-        self.ctx.game.write_status('当前歌曲-{}-{}-{}'.format(
-            song_info['song_name'],
-            song_info['artist_name'],
-            song_info['handler_name']))
+        self.ctx.game.write_status(f" - {song_info['song_name']} - 正在转码...")
+        c = await self.ctx.game.trans_wav(song_info)
+        if c == 0:
+            db.insert(song_info)
+            self.ctx.game.write_status('当前歌曲-{}-{}-{}'.format(
+                song_info['song_name'],
+                song_info['artist_name'],
+                song_info['handler_name']))
+            return
+        elif c == -1:
+            self.ctx.game.write_status('哈哈，音频文件大小超过阈值了捏')
+            return
 
 
 if __name__ == "__main__":
