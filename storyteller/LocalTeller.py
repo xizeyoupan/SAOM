@@ -3,11 +3,7 @@ from collections import deque
 from difflib import SequenceMatcher
 import os
 
-try:
-    from storyteller.AbstractTeller import AbstractTeller
-except ImportError:
-    from AbstractTeller import AbstractTeller
-_path = os.path.dirname(os.path.realpath(__file__))
+from storyteller.AbstractTeller import AbstractTeller
 
 
 class LocalTeller(AbstractTeller):

@@ -4,8 +4,8 @@ import argparse
 class DefaultParser:
     def __init__(self) -> None:
         self.parser = argparse.ArgumentParser()
-        self.parser.add_argument('-s', nargs='*',)
-        self.parser.add_argument('-m')
+        self.parser.add_argument('-s', nargs='*',)  # 单曲点歌
+        self.parser.add_argument('-n', nargs='*',)  # 轻国小说展
 
     def parse_line(self, line: str) -> argparse.Namespace:
         try:
