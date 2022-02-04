@@ -1,10 +1,8 @@
 import asyncio
 import configparser
-import json
 import logging
 import os
 import sys
-import time
 from ast import literal_eval
 
 import PySimpleGUI as sg
@@ -66,8 +64,8 @@ def open_config_window(config_str: str):
         with open(CONFIG_PATH, 'w', encoding='utf8') as f:
             config.write(f)
 
-        sg.popup('载入成功，请在游戏内发送`exec saom`指令ヾ(≧▽≦*)',
-                 title='', auto_close=True, auto_close_duration=2)
+        sg.popup('载入成功ヾ(≧▽≦*)', title='',
+                 auto_close=True, auto_close_duration=1)
 
     w.close()
 
@@ -80,6 +78,8 @@ if not os.path.exists(ffmpeg_path):
 config = configparser.ConfigParser()
 config.read(CONFIG_PATH, encoding='utf-8')
 _ = config.sections()
+_ = [i for i in _ if i.startswith('handler') or i.startswith(
+    'game') or i.startswith('storyteller')]
 section_map = {}
 games = []
 handlers = []
@@ -98,21 +98,21 @@ for i in _:
 layout = [
     [sg.Text("请选择游戏：")],
     [sg.Combo(games, key='-GAME-', expand_x=True,
-              readonly=True, default_value=games[0]),
+              readonly=True, default_value=config['gui.config']['game'], enable_events=True),
      sg.Button('设置', key='-GAMECONFIG-')],
 
     [sg.HorizontalSeparator(color='#CCC')],
 
     [sg.Text("请选择默认音乐api：")],
     [sg.Combo(handlers, key='-HANDLER-', expand_x=True,
-              readonly=True, default_value=handlers[0]),
+              readonly=True, default_value=config['gui.config']['handler'], enable_events=True),
      sg.Button('设置', key='-HANDLERCONFIG-')],
 
     [sg.HorizontalSeparator(color='#CCC')],
 
     [sg.Text("请选择默认独轮车：")],
     [sg.Combo(storytellers, key='-STORYTELLER-', expand_x=True,
-              readonly=True, default_value=storytellers[0]),
+              readonly=True, default_value=config['gui.config']['storyteller'], enable_events=True),
      sg.Button('设置', key='-STORYTELLERCONFIG-')],
 
     [sg.HorizontalSeparator(color='#CCC')],
@@ -134,10 +134,17 @@ saom = SAOM()
 async def main():
     while True:
         event, values = window.read(timeout=0)
-        await asyncio.sleep(0.01)
+        await asyncio.sleep(0.05)
 
         if event == sg.WIN_CLOSED:
             break
+        elif event in ('-GAME-', '-HANDLER-', '-STORYTELLER-'):
+            config = configparser.ConfigParser()
+            config.read(CONFIG_PATH, encoding='utf-8')
+            config['gui.config'][event.strip('-').lower()] = values[event]
+            with open(CONFIG_PATH, 'w', encoding='utf8') as f:
+                config.write(f)
+            layout[-1][2].click()
         elif event == '-GAMECONFIG-':
             open_config_window(section_map[values['-GAME-']])
             layout[-1][2].click()
@@ -188,6 +195,8 @@ async def main():
                        section_map[values['-HANDLER-']],
                        section_map[values['-STORYTELLER-']])
 
+    if saom.game:
+        saom.stop()
     window.close()
 
 loop = asyncio.get_event_loop()

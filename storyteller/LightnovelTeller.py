@@ -1,16 +1,15 @@
 import asyncio
 import configparser
-from utils import headers
 import json
 import logging
 import os
 from ast import literal_eval
-from collections import deque
 from difflib import SequenceMatcher
-from pyquery import PyQuery as pq
-from io import StringIO
+
 import aiohttp
+from pyquery import PyQuery as pq
 from SAOM import SAOM
+from utils import headers
 
 from storyteller.AbstractTeller import AbstractTeller
 
@@ -21,11 +20,11 @@ class LightnovelTeller(AbstractTeller):
     config_path = os.path.join(os.path.abspath(
         os.path.dirname(os.path.dirname(__file__))), 'config.ini')
 
-    def __init__(self, ctx):
+    def __init__(self, ctx: SAOM):
         self.session = aiohttp.ClientSession()
         self.ctx = ctx
         self.current_line = '轻之国度-还没有轻小说捏'
-        self.contents = StringIO()
+        self.contents = []
         self.get_config()
         if self.config['enable']['value']:
             asyncio.create_task(self.start())
@@ -67,6 +66,7 @@ class LightnovelTeller(AbstractTeller):
             }
         }
 
+        logger.debug(f'Search: {s}.')
         self.ctx.game.write_status(f"{self.config['name']['value']} - 正在查找{s}")
         async with self.session.post('https://www.lightnovel.us/proxy/api/search/search-result', json=payload, headers=headers) as resp:
             res = json.loads(await resp.text())
@@ -74,6 +74,7 @@ class LightnovelTeller(AbstractTeller):
             if len(data['list']) == 0:
                 self.ctx.game.write_status(
                     f"{self.config['name']['value']} - 没有找到{s}捏。")
+                logger.warning(f'No result for {s}.')
                 return
             first_piece = data['list'][0]
             novel_title = first_piece['title']
@@ -87,15 +88,15 @@ class LightnovelTeller(AbstractTeller):
             p = d("#article-main-contents")
             text = p.text()
             text_list = text.split('\n')
-            text_list = [i.strip() + '\n' for i in text_list if i]
-            self.contents = StringIO()
-            self.contents.writelines(text_list)
-            self.contents.seek(0)
+            text_list = [i.strip() for i in text_list if i.strip()]
+            text_list.reverse()
+            self.contents = text_list
             self.current_line = f"开始说书 - {self.config['name']['value']} - {novel_title}"
             self.ctx.game.write_story(self.current_line)
 
         self.ctx.game.write_status(
             f"{self.config['name']['value']} - 载入完毕！可以说书！")
+        logger.debug(f'Loaded : {novel_title}.')
 
     async def start(self):
         self.__running = True
@@ -112,8 +113,8 @@ class LightnovelTeller(AbstractTeller):
         if 'saom' in line:
             line = line.split('saom')[-1]
             namespace = self.ctx.parser.parse_line(line)
-            if namespace.n:
-                asyncio.create_task(self.get_content(' '.join(namespace.n)))
+            if namespace.pos0 == 'n':
+                asyncio.create_task(self.get_content(' '.join(namespace.pos1)))
                 return
         asyncio.create_task(self.compare(line))
 
@@ -127,19 +128,14 @@ class LightnovelTeller(AbstractTeller):
                             self.current_line).ratio()
 
         if r > 0.6:
-            line = self.contents.readline() or self.current_line
+            line = self.contents.pop() if self.contents else self.current_line
             self.current_line = line.strip()[:80]
+            self.current_line.replace('"', '\'')
             self.ctx.game.write_story(self.current_line)
 
     def __del__(self):
         asyncio.create_task(self.session.close())
 
 
-async def main():
-    z = LightnovelTeller(SAOM())
-    await z.get_content('魔法禁书目录')
-
-
 if __name__ == '__main__':
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(main())
+    ...

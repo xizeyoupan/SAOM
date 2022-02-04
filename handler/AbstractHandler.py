@@ -1,4 +1,5 @@
 from abc import ABCMeta, abstractmethod
+
 from SAOM import SAOM
 
 
@@ -17,6 +18,18 @@ class AbstractHandler(metaclass=ABCMeta):
 
     @abstractmethod
     async def single_song(self, search_key: str):
+        pass
+
+    @property
+    @abstractmethod
+    def default_config(self):
+        pass
+
+    @abstractmethod
+    def get_config(self):
+        pass
+
+    def save_config(self, config: dict):
         pass
 
     @abstractmethod

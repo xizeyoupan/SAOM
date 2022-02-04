@@ -3,6 +3,7 @@ import configparser
 import json
 import logging
 import os
+import random
 from ast import literal_eval
 from collections import deque
 from difflib import SequenceMatcher
@@ -19,11 +20,13 @@ class ZhijiangTeller(AbstractTeller):
     config_path = os.path.join(os.path.abspath(
         os.path.dirname(os.path.dirname(__file__))), 'config.ini')
 
-    def __init__(self, ctx):
+    def __init__(self, ctx: SAOM):
         self.session = aiohttp.ClientSession()
         self.ctx = ctx
         self.current_line = ''
-        self.page_num = 0
+        self.page_order = list(range(1, 1035))
+        random.shuffle(self.page_order)
+        self.page_order.pop()
         self.contents = deque()
         self.get_config()
         if self.config['enable']['value']:
@@ -53,7 +56,8 @@ class ZhijiangTeller(AbstractTeller):
             config_parser.write(f)
 
     async def get_content(self):
-        async with self.session.get(f'https://asoulcnki.asia/v1/api/ranking/?pageNum={self.page_num}&timeRangeMode=0&sortMode=0&pageSize=10') as resp:
+        page = self.page_order.pop()
+        async with self.session.get(f'https://asoulcnki.asia/v1/api/ranking/?pageNum={page}&timeRangeMode=0&sortMode=0&pageSize=10') as resp:
             res = json.loads(await resp.text())
 
             for i in res['data']['replies']:
@@ -63,13 +67,14 @@ class ZhijiangTeller(AbstractTeller):
                 content = deque(content)
                 piece = {'author': i['m_name'], 'content': content}
                 self.contents.append(piece)
+        logger.debug(f'Loaded page {page}.')
 
     async def check(self):
         if len(self.contents) < 2:
-            self.page_num += 1
             await self.get_content()
 
     async def start(self):
+        self.get_config()
         self.__running = True
         await self.check()
         self.current_line = f"开始说书 - {self.config['name']['value']}"
@@ -81,7 +86,8 @@ class ZhijiangTeller(AbstractTeller):
         logger.debug('stop.')
 
     def parse(self, line: str):
-        asyncio.create_task(self.compare(line))
+        if self.__running:
+            asyncio.create_task(self.compare(line))
 
     async def compare(self, line):
         if line.count('：') == 1:
@@ -98,6 +104,10 @@ class ZhijiangTeller(AbstractTeller):
 
             line = self.contents[0]['content'].popleft()
             self.current_line = line.strip()[:80]
+            while not self.current_line:
+                line = self.contents[0]['content'].popleft()
+                self.current_line = line.strip()[:80]
+            self.current_line.replace('"', '\'')
             self.ctx.game.write_story(self.current_line)
             await self.check()
 
@@ -105,10 +115,5 @@ class ZhijiangTeller(AbstractTeller):
         asyncio.create_task(self.session.close())
 
 
-async def main():
-    z = ZhijiangTeller(SAOM())
-
-
 if __name__ == '__main__':
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(main())
+    ...

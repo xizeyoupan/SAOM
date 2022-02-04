@@ -1,10 +1,7 @@
 import asyncio
-import importlib
-import json
 import configparser
+import importlib
 import os
-from io import BytesIO
-
 
 from argparser.DefaultParser import DefaultParser
 
@@ -20,6 +17,9 @@ class SAOM:
     def __init__(self):
         self.parser = DefaultParser()
         self.config = configparser.ConfigParser()
+        self.game = None
+        self.handler = None
+        self.storyteller = None
 
     def set_game(self, section_name: str):
         module = importlib.import_module(section_name)

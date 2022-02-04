@@ -1,10 +1,8 @@
 import asyncio
 import configparser
-import json
 import logging
 import os
 import shutil
-import sys
 from ast import literal_eval
 from io import StringIO
 from tempfile import TemporaryDirectory
@@ -12,14 +10,14 @@ from tempfile import TemporaryDirectory
 from SAOM import SAOM
 from utils import get_steam_app_path
 
-from game.DefaultGame import DefaultGame
+from game.AbstractGame import AbstractGame
 
 logger = logging.getLogger(f"saom.{__name__}")
 PROJECT_PATH = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 CONTENT_PATH = os.path.join(PROJECT_PATH, 'content')
 
 
-class CSGO(DefaultGame):
+class CSGO(AbstractGame):
 
     config_path = os.path.join(os.path.abspath(
         os.path.dirname(os.path.dirname(__file__))), 'config.ini')
@@ -95,8 +93,8 @@ class CSGO(DefaultGame):
             for line in lines:
                 if 'SAOM - 说唱脚本- ddl.ink/saom' in line:
                     continue
-                self.ctx.handler.parse(line)
-                self.ctx.storyteller.parse(line)
+                self.ctx.handler.parse(line.strip())
+                self.ctx.storyteller.parse(line.strip())
             await asyncio.sleep(0.1)
 
     def write_cfg(self) -> None:
@@ -125,28 +123,35 @@ class CSGO(DefaultGame):
             f.write(self.cfg.read())
             self.cfg.close()
 
-    def write_status(self, mesage: str, extra: bool = True):
+    def write_status(self, message: str, extra: bool = True):
+        message = message.replace('"', '\'')
         try:
             with open(os.path.join(self.cfg_path, "saom_status.cfg"), 'w', encoding='utf8') as f:
                 if extra:
-                    f.write(f'say "SAOM - 说唱脚本- ddl.ink/saom  {mesage}"')
+                    f.write(f'say "SAOM - 说唱脚本- ddl.ink/saom  {message}"')
                 else:
-                    f.write(f'say "{mesage}"')
+                    f.write(f'say "{message}"')
         except PermissionError:
+            logger.warn('saom_status.cfg permission denied.')
             pass
 
     def write_story(self, line: str):
+        line = line.replace('"', '\'')
         try:
             with open(os.path.join(self.cfg_path, "saom_story.cfg"), 'w', encoding='utf8') as f:
                 f.write(f'say "{line}"')
         except PermissionError:
+            logger.warn('saom_story.cfg permission denied.')
             pass
 
-    async def trans_wav(self, song_info) -> int:
+    async def trans_wav(self, song_info, handler=True) -> int:
         with TemporaryDirectory() as temp_path:
             args = '{}/ffmpeg.exe -y -i "{}" -f wav -bitexact -map_metadata -1 -vn -acodec pcm_s16le -ar {} -ac {} "{}"'.format(
                 PROJECT_PATH,
-                os.path.join(CONTENT_PATH, song_info['file_name']),
+
+                os.path.join(CONTENT_PATH, song_info['file_name'])
+                if handler else song_info['file_name'],
+
                 22050,
                 1,
                 os.path.join(temp_path, 'temp.wav')
@@ -173,9 +178,10 @@ class CSGO(DefaultGame):
                 return -1
             else:
                 shutil.move(os.path.join(temp_path, 'temp.wav'), self.wav_path)
-                logger.debug(f'{song_info["file_name"]} to wav.')
+                logger.debug(
+                    f'Successfully trans {song_info["file_name"]} to wav.')
                 return 0
 
 
 if __name__ == '__main__':
-    CSGO(SAOM())
+    ...

@@ -1,20 +1,18 @@
-from ast import literal_eval
 import asyncio
 import configparser
-import json
 import logging
 import os
-from os.path import dirname
-import sys
+from ast import literal_eval
 from io import BytesIO
+from os.path import dirname
 
 import aiohttp
+from pyquery import PyQuery as pq
 from SAOM import SAOM
-from tinydb import TinyDB, where
-
-from handler.AbstractHandler import AbstractHandler
+from tinydb import TinyDB
 from utils import headers
 
+from handler.AbstractHandler import AbstractHandler
 
 DB_PATH = os.path.join(
     dirname(dirname(os.path.realpath(__file__))), 'content\songs.json')
@@ -38,6 +36,7 @@ class BilibiliHandler(AbstractHandler):
 
     def start(self):
         self.__running = True
+        self.get_config()
         logger.debug('start.')
 
     def stop(self):
@@ -74,29 +73,38 @@ class BilibiliHandler(AbstractHandler):
             return
         line = line.split('saom')[-1]
         namespace = self.ctx.parser.parse_line(line)
-        if namespace.s:
-            asyncio.create_task(self.single_song(namespace.s))
+        if not namespace:
+            return
+        if namespace.pos0 == 's' and namespace.pos1:
+            asyncio.create_task(self.single_song(' '.join(namespace.pos1)))
 
     def __del__(self):
         asyncio.create_task(self.session.close())
 
     async def single_song(self, search_key: str) -> None:
-        logger.debug(f'search {search_key}.')
+        logger.debug(f'Search {search_key}.')
         stream = BytesIO()
         self.ctx.game.write_status(
             f'接到指令！ 正在搜索： {search_key}，{self.config["name"]["value"]}')
 
         async with self.session.get('https://api.bilibili.com/x/web-interface/search/all/v2?keyword={}'.format(search_key)) as resp:
             video_json = (await resp.json())['data']['result'][10]['data']
+            if not len(video_json):
+                self.ctx.game.write_status(
+                    f'没有找到 {search_key}-{self.config["name"]["value"]}.')
+                logger.warning(
+                    f'No result for {search_key}.')
+                return
             chosen_video = video_json[0]
             bvid = chosen_video['bvid']
             author = chosen_video['author']
+            d = pq(chosen_video['title'])
+            title = d.text()
 
         async with self.session.get('https://api.bilibili.com/x/player/pagelist?bvid={}'.format(bvid)) as resp:
             p = (await resp.json())['data'][0]
-            duration = p['duration']
+            # duration = p['duration']
             cid = p['cid']
-            title = p['part']
             song_info = {"song_name": title, "handler_name": self.config['name']['value'],
                          "artist_name": author, "song_id": bvid}
 
@@ -126,13 +134,16 @@ class BilibiliHandler(AbstractHandler):
                     song_info['downloading'] * 100,
                 ))
 
+        logger.debug(f'Song downloaded {title}.')
         stream.seek(0)
 
         song_info["song_url"] = audio_url
         song_info["file_name"] = audio_url.split('?')[0].split('/')[-1]
 
-        with open(os.path.join(CONTENT_PATH, song_info['file_name']), 'wb') as f:
+        _path = os.path.join(CONTENT_PATH, song_info['file_name'])
+        with open(_path, 'wb') as f:
             f.write(stream.read())
+        logger.debug(f'Song saved to {_path}.')
 
         self.ctx.game.write_status(f" - {song_info['song_name']} - 正在转码...")
         c = await self.ctx.game.trans_wav(song_info)

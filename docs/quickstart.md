@@ -3,13 +3,17 @@
 可以通过[Releases](https://github.com/xizeyoupan/SAOM/releases)下载打包好的程序。  
 接着运行`第一次运行点这里.exe`，这会下载ffmpeg来支援转码。
 
+也可以克隆此项目用python运行。
+
+> 如果您选择python，最低版本要求3.9！
+
 ## 进行插件和绑定设置
 
 ![](assets/quickstart/1.png)
 
 运行`SAOM.exe`，设置csgo游戏，在绑定指令输入框中输入以下指令：
 
-!> 运行以下指令后如果你的N、P或L键绑定过其他指令（如跳投），其他指令会被**覆盖**。解决方法请看[进阶用法]()。
+!> 运行以下指令后如果你的N、P或L键绑定过其他指令（如跳投），其他指令会被**覆盖**。解决方法请看[进阶用法](usage.md)。
 
 !> 需要使用英文标点符号。
 
@@ -33,13 +37,11 @@ bind "n" "播放音乐"
 ?> L在这里是用来显示SAOM程序运行信息的键。
 
 好了，现在来试试点歌：
-输入搜歌指令`saom -s 歌名`，按L显示提示信息，待下载转码完成后按N播放。
+输入搜歌指令`saom s 歌名`，按L显示提示信息，待下载转码完成后按N播放。
 
 ?> N在这里是用来播放音乐的键。
 
-<video controls width="80%">
-    <source src="assets/quickstart/video.mkv" type="video/mp4">
-</video>
+<iframe src="//player.bilibili.com/player.html?aid=211267987&bvid=BV1za41127VK&cid=501336366&page=1" height="600px" scrolling="no" border="0" frameborder="no" framespacing="0" allowfullscreen="true"> </iframe>
 
 不断按P看看说书是怎么说的：
 
