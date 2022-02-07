@@ -25,7 +25,7 @@ jobs:
         run: pyinstaller all.spec -y
 
       - name: Set tag
-      - run: |
+        run: |
           chcp 65001
           echo ("TAG_NAME=" + ${GITHUB_REF:10}) >> $env:GITHUB_ENV
 
