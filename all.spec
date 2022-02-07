@@ -37,7 +37,7 @@ get_ffmpeg_exe = EXE(get_ffmpeg_pyz,
 
 a = Analysis(['main.py'],
              pathex=[],
-             binaries=[('config.ini','.'),],
+             binaries=[],
              datas=[('content','content'),('game','game'),('handler','handler'),('storyteller','storyteller')],
              hiddenimports=['aiohttp','pyquery','tinydb'],
              hookspath=[],
