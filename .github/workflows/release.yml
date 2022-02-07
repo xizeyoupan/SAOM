@@ -1,4 +1,4 @@
-name: Main
+name: Build
 
 on:
   push:
@@ -29,9 +29,13 @@ jobs:
         with:
           type: "zip"
           filename: SAOM_win64${GITHUB_REF:10}.zip
-          path: ./dist
+          path: ./dist/SAOM_win64
+
+      - name: Set tag
+        id: vars
+        run: echo ::set-output name=tag::${GITHUB_REF:10}
 
       - name: Release
         uses: softprops/action-gh-release@v1
         with:
-          files: SAOM_win64${GITHUB_REF:10}.zip
+          files: SAOM_win64${{ steps.vars.outputs.tag }}.zip
