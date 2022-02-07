@@ -1,0 +1,37 @@
+name: Main
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+jobs:
+  build:
+    runs-on: windows-2019
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: "3.9"
+
+      - name: Install
+        run: pip install -r requirements.txt
+
+      - name: Install Pyinstaller
+        run: pip install pyinstaller
+
+      - name: Bundle
+        run: pyinstaller all.spec -y
+
+      - name: Zip dist
+        uses: thedoctor0/zip-release@master
+        with:
+          type: "zip"
+          filename: SAOM_win64${GITHUB_REF:10}.zip
+          path: ./dist
+
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: SAOM_win64${GITHUB_REF:10}.zip
