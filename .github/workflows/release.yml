@@ -24,18 +24,19 @@ jobs:
       - name: Bundle
         run: pyinstaller all.spec -y
 
+      - name: Set tag
+      - run: |
+          chcp 65001
+          echo ("TAG_NAME=" + ${GITHUB_REF:10}) >> $env:GITHUB_ENV
+
       - name: Zip dist
         uses: thedoctor0/zip-release@master
         with:
           type: "zip"
-          filename: SAOM_win64${GITHUB_REF:10}.zip
+          filename: "SAOM_win64${{ env.TAG_NAME }}.zip"
           path: ./dist/SAOM_win64
-
-      - name: Set tag
-        id: vars
-        run: echo ::set-output name=tag::${GITHUB_REF:10}
 
       - name: Release
         uses: softprops/action-gh-release@v1
         with:
-          files: SAOM_win64${{ steps.vars.outputs.tag }}.zip
+          files: "SAOM_win64${{ env.TAG_NAME }}.zip"
