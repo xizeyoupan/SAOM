@@ -24,7 +24,7 @@ if os.path.exists(ffmpeg_path):
     window.close()
 
 url = sg.popup_get_text("下载加速由❤提供\n或在下方输入自定义下载地址", title="哈哈",
-                        default_text="https://saom.saom.workers.dev/https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2022-01-22-12-32/ffmpeg-n5.0-2-g2bc8c87b2e-win64-lgpl-5.0.zip")
+                        default_text="https://saom.saom.workers.dev/https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-n5.0-latest-win64-lgpl-5.0.zip")
 if not url:
     sys.exit()
 
@@ -69,11 +69,11 @@ while True:
         window['-TEXT-'].update("正在解压")
         zip_file = zipfile.ZipFile(tmp_file)
         zip_file.extract(
-            "ffmpeg-n5.0-2-g2bc8c87b2e-win64-lgpl-5.0/bin/ffmpeg.exe", folder_path)
+            "ffmpeg-n5.0-latest-win64-lgpl-5.0/bin/ffmpeg.exe", folder_path)
         shutil.move(os.path.join(folder_path,
-                    "ffmpeg-n5.0-2-g2bc8c87b2e-win64-lgpl-5.0/bin/ffmpeg.exe"), ffmpeg_path)
+                    "ffmpeg-n5.0-latest-win64-lgpl-5.0/bin/ffmpeg.exe"), ffmpeg_path)
         shutil.rmtree(os.path.join(folder_path,
-                                   "ffmpeg-n5.0-2-g2bc8c87b2e-win64-lgpl-5.0"))
+                                   "ffmpeg-n5.0-latest-win64-lgpl-5.0"))
         zip_file.close()
         tmp_file.close()
         sg.popup("Done!\n(●'◡'●)")
