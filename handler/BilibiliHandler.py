@@ -15,7 +15,7 @@ from utils import headers
 from handler.AbstractHandler import AbstractHandler
 
 DB_PATH = os.path.join(
-    dirname(dirname(os.path.realpath(__file__))), 'content\songs.json')
+    dirname(dirname(os.path.realpath(__file__))), 'content/songs.json')
 CONTENT_PATH = os.path.join(
     dirname(dirname(os.path.realpath(__file__))), 'content')
 db = TinyDB(DB_PATH)
@@ -43,10 +43,11 @@ class BilibiliHandler(AbstractHandler):
         self.__running = False
         logger.debug('stop.')
 
+    @classmethod
     @property
-    def default_config(self):
+    def default_config(cls):
         return {
-            "className": {'value': self.__class__.__name__, "type": "str", "disabled": True},
+            "className": {'value': cls.__name__, "type": "str", "disabled": True},
             "name": {'value': "b站", "type": "str", "disabled": True},
             "shortcut": {'value': "b", "type": "str", "disabled": True},
             "holdtoplay": {'value': False, "alias": "按住来播放音乐", "type": "bool", "disabled": False},
@@ -61,11 +62,12 @@ class BilibiliHandler(AbstractHandler):
         for k, v in self.config.items():
             self.config[k] = literal_eval(v)
 
-    def save_config(self, config: dict) -> None:
+    @classmethod
+    def save_config(cls, config: dict) -> None:
         config_parser = configparser.ConfigParser()
-        config_parser.read(self.config_path, encoding='utf-8')
-        config_parser[f'handler.{self.__class__.__name__}'] = config
-        with open(self.config_path, 'w', encoding='utf-8') as f:
+        config_parser.read(cls.config_path, encoding='utf-8')
+        config_parser[f'handler.{cls.__name__}'] = config
+        with open(cls.config_path, 'w', encoding='utf-8') as f:
             config_parser.write(f)
 
     def parse(self, line: str):

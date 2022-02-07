@@ -21,6 +21,10 @@ logger.addHandler(ch)
 
 CONFIG_PATH = os.path.join(os.path.dirname(
     os.path.realpath(__file__)), 'config.ini')
+
+if not os.path.exists(CONFIG_PATH):
+    SAOM.init_config()
+
 folder_path = os.path.dirname(os.path.realpath(__file__))
 ffmpeg_path = os.path.join(folder_path, 'ffmpeg.exe')
 
@@ -93,6 +97,14 @@ for i in _:
     elif i.startswith('storyteller'):
         storytellers.append(name)
     section_map[name] = i
+
+if 'gui.config' not in config.sections():
+    config['gui.config'] = {}
+    config['gui.config']['game'] = games[-1]
+    config['gui.config']['handler'] = handlers[-1]
+    config['gui.config']['storyteller'] = storytellers[-1]
+    with open(CONFIG_PATH, 'w', encoding='utf8') as f:
+        config.write(f)
 
 
 layout = [

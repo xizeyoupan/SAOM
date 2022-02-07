@@ -29,12 +29,13 @@ class LightnovelTeller(AbstractTeller):
         if self.config['enable']['value']:
             asyncio.create_task(self.start())
 
+    @classmethod
     @property
-    def default_config(self):
+    def default_config(cls):
         return {
             "name": {'value': "轻国小说展", "type": "str", "disabled": True},
-            "classname": {'value': self.__class__.__name__, "type": "str", "disabled": True},
-            "enable": {'value': False, 'alias': '开启独轮车', "type": "bool", "disabled": False},
+            "classname": {'value': cls.__name__, "type": "str", "disabled": True},
+            "enable": {'value': True, 'alias': '开启独轮车', "type": "bool", "disabled": False},
         }
 
     def get_config(self) -> None:
@@ -45,11 +46,12 @@ class LightnovelTeller(AbstractTeller):
         for k, v in self.config.items():
             self.config[k] = literal_eval(v)
 
-    def save_config(self, config: dict) -> None:
+    @classmethod
+    def save_config(cls, config: dict) -> None:
         config_parser = configparser.ConfigParser()
-        config_parser.read(self.config_path, encoding='utf-8')
-        config_parser[f'storyteller.{self.__class__.__name__}'] = config
-        with open(self.config_path, 'w', encoding='utf-8') as f:
+        config_parser.read(cls.config_path, encoding='utf-8')
+        config_parser[f'storyteller.{cls.__name__}'] = config
+        with open(cls.config_path, 'w', encoding='utf-8') as f:
             config_parser.write(f)
 
     async def get_content(self, s: str):
@@ -101,7 +103,7 @@ class LightnovelTeller(AbstractTeller):
     async def start(self):
         self.__running = True
         self.ctx.game.write_story(self.current_line)
-        logger.debug(f'start.')
+        logger.debug('start.')
 
     def stop(self):
         self.__running = False

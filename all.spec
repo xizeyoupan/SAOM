@@ -37,9 +37,9 @@ get_ffmpeg_exe = EXE(get_ffmpeg_pyz,
 
 a = Analysis(['main.py'],
              pathex=[],
-             binaries=[('config.json','.'),],
+             binaries=[('config.ini','.'),],
              datas=[('content','content'),('game','game'),('handler','handler'),('storyteller','storyteller')],
-             hiddenimports=['aiohttp'],
+             hiddenimports=['aiohttp','pyquery','tinydb'],
              hookspath=[],
              hooksconfig={},
              runtime_hooks=[],
@@ -80,5 +80,5 @@ coll = COLLECT(exe,
                strip=False,
                upx=True,
                upx_exclude=[],
-               name='main')
+               name='SAOM_win64')
 

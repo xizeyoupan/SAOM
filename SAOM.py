@@ -6,7 +6,7 @@ import os
 from argparser.DefaultParser import DefaultParser
 
 DB_PATH = os.path.join(os.path.dirname(
-    os.path.realpath(__file__)), 'content\songs.json')
+    os.path.realpath(__file__)), 'content/songs.json')
 CONTENT_PATH = os.path.join(os.path.dirname(
     os.path.realpath(__file__)), 'content')
 CONFIG_PATH = os.path.join(os.path.dirname(
@@ -20,6 +20,23 @@ class SAOM:
         self.game = None
         self.handler = None
         self.storyteller = None
+
+    @classmethod
+    def init_config(cls):
+        config_path = os.path.join(os.path.dirname(
+            os.path.realpath(__file__)), 'config.ini')
+        if os.path.exists(config_path):
+            return
+
+        for i in ('game', 'handler', 'storyteller'):
+            with os.scandir(os.path.join(os.path.dirname(os.path.realpath(__file__)), i)) as it:
+                for entry in it:
+                    if entry.is_file() and entry.name != '__init__.py' \
+                            and entry.name.lower().endswith('.py') and 'Abstract' not in entry.name:
+                        _name = entry.name.split(".")[0]
+                        module = importlib.import_module(f'{i}.{_name}')
+                        _class = getattr(module, _name)
+                        _class.save_config(_class.default_config)
 
     def set_game(self, section_name: str):
         module = importlib.import_module(section_name)
@@ -45,9 +62,9 @@ class SAOM:
 
 
 async def main():
-    ...
+    SAOM.init_config()
 
 if __name__ == '__main__':
     loop = asyncio.get_event_loop()
-    loop.create_task(main())
-    loop.run_forever()
+    # loop.create_task()
+    loop.run_until_complete(main())

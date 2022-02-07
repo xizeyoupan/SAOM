@@ -41,11 +41,12 @@ class CSGO(AbstractGame):
         asyncio.create_task(self.start())
         self.write_status('启动成功！')
 
-    @ property
-    def default_config(self):
+    @classmethod
+    @property
+    def default_config(cls):
         return {
             "name": {'value': "csgo", "type": "str", "disabled": True},
-            "classname": {'value': self.__class__.__name__, "type": "str", "disabled": True},
+            "classname": {'value': cls.__name__, "type": "str", "disabled": True},
             "id": {'value': "730", "type": "str", "disabled": True},
             "directory": {'value': "common\\Counter-Strike Global Offensive\\", "type": "str", "disabled": True},
             "tocfg": {'value': "csgo\\cfg\\", "type": "str", "disabled": True},
@@ -54,7 +55,7 @@ class CSGO(AbstractGame):
             "tellkey": {'value': "exec saom_story", "alias": "说书绑定指令", "type": "str", "disabled": True},
             "playkey": {'value': "播放音乐", "alias": "音乐播放绑定指令\nsaom_play/saom_hold_play (不按住播放/按住播放)\n下面绑定时输入`播放音乐`即可", "type": "str", "disabled": True},
             "wavmaxsize": {'value': "100", "alias": "音乐最大体积(MB)，过大游戏可能会崩溃\n100约为40分钟。", "type": "str", "disabled": False},
-            "binds": {'value': 'bind "p" "exec saom_story"\nbind "l" "exec saom_status"\nbind "n" "播放音乐"\n', "alias": "绑定指令", "type": "multiline", "disabled": False},
+            "binds": {'value': 'bind "p" "exec saom_story"\nbind "l" "exec saom_status;exec saom;"\nbind "n" "播放音乐"\n', "alias": "绑定指令", "type": "multiline", "disabled": False},
         }
 
     def get_config(self) -> None:
@@ -65,11 +66,12 @@ class CSGO(AbstractGame):
         for k, v in self.config.items():
             self.config[k] = literal_eval(v)
 
-    def save_config(self, config: dict) -> None:
+    @classmethod
+    def save_config(cls, config: dict) -> None:
         config_parser = configparser.ConfigParser()
-        config_parser.read(self.config_path, encoding='utf-8')
-        config_parser[f'game.{self.__class__.__name__}'] = config
-        with open(self.config_path, 'w', encoding='utf-8') as f:
+        config_parser.read(cls.config_path, encoding='utf-8')
+        config_parser[f'game.{cls.__name__}'] = config
+        with open(cls.config_path, 'w', encoding='utf-8') as f:
             config_parser.write(f)
 
     def stop(self) -> None:

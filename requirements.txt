@@ -1,3 +1,4 @@
 aiohttp==3.8.1
+pyquery==1.4.3
 PySimpleGUI==4.56.0
 tinydb==4.6.1

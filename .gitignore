@@ -10,3 +10,4 @@ main.spec
 .vscode
 *.log
 !oversize.mp3
+config.ini

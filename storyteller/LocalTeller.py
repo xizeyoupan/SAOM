@@ -42,12 +42,13 @@ class LocalTeller(AbstractTeller):
             with open(os.path.join(self.cfg_path, f'saom_localteller_piece{i}.cfg'), 'w', encoding='utf-8') as f:
                 f.write(cfg)
 
+    @classmethod
     @property
-    def default_config(self):
+    def default_config(cls):
         return {
             "name": {'value': "本地作文展", "type": "str", "disabled": True},
-            "classname": {'value': self.__class__.__name__, "type": "str", "disabled": True},
-            "enable": {'value': False, 'alias': '开启独轮车', "type": "bool", "disabled": False},
+            "classname": {'value': cls.__name__, "type": "str", "disabled": True},
+            "enable": {'value': True, 'alias': '开启独轮车', "type": "bool", "disabled": False},
             "localtext": {'value': 'storyteller/Insult.txt', 'alias': '本地文本，支持相对路径和绝对路径', "type": "str", "disabled": False},
             "piece1": {'value': '', 'alias': '自定义动作1，用法请看文档', "type": "str", "disabled": False},
             "piece2": {'value': '', 'alias': '自定义动作2，用法请看文档', "type": "str", "disabled": False},
@@ -68,11 +69,12 @@ class LocalTeller(AbstractTeller):
         for k, v in self.config.items():
             self.config[k] = literal_eval(v)
 
-    def save_config(self, config: dict) -> None:
+    @classmethod
+    def save_config(cls, config: dict) -> None:
         config_parser = configparser.ConfigParser()
-        config_parser.read(self.config_path, encoding='utf-8')
-        config_parser[f'storyteller.{self.__class__.__name__}'] = config
-        with open(self.config_path, 'w', encoding='utf-8') as f:
+        config_parser.read(cls.config_path, encoding='utf-8')
+        config_parser[f'storyteller.{cls.__name__}'] = config
+        with open(cls.config_path, 'w', encoding='utf-8') as f:
             config_parser.write(f)
 
     async def start(self):
@@ -89,7 +91,7 @@ class LocalTeller(AbstractTeller):
             self.contents = f.readlines()
             self.contents = [x.strip() for x in self.contents if x.strip()]
         self.contents.reverse()
-        logger.debug(f'start.')
+        logger.debug('start.')
 
     def stop(self):
         self.__running = False
