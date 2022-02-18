@@ -34,7 +34,7 @@ class LocalTeller(AbstractTeller):
 
             if statements[0] == 'audio':
                 say_words = statements[2] if len(
-                    statements) > 2 else f'转码自定义音频{i}'
+                    statements) > 2 else ''
                 cfg = f'echo "{self.uuid} piece{i}"\nsay "{say_words}"'
             elif statements[0] == 'say':
                 cfg = f'say "{statements[-1][:80]}"'
@@ -112,8 +112,8 @@ class LocalTeller(AbstractTeller):
                 self.ctx.game.trans_wav(songinfo, handler=False))
             task.add_done_callback(
                 functools.partial(self.ctx.game.write_status, '本地说书自定义音频转码完成，可以开始播放了(≧∇≦)ﾉ'))
-            task.add_done_callback(functools.partial(
-                logger.debug, f"Switch to {songinfo['file_name']} successfully."))
+            task.add_done_callback(lambda x:
+                                   logger.debug(f"Switch to {songinfo['file_name']} successfully."))
         else:
             asyncio.create_task(self.compare(line))
 

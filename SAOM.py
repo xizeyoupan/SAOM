@@ -51,9 +51,9 @@ class SAOM:
         self.storyteller = getattr(module, section_name.split('.')[-1])(self)
 
     def start(self, game: str, handler: str, storyteller: str):
+        self.set_game(game)
         self.set_storyteller(storyteller)
         self.set_handler(handler)
-        self.set_game(game)
 
     def stop(self):
         self.game.stop()

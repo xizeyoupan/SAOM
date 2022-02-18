@@ -10,10 +10,10 @@ log_path = os.path.join(os.path.abspath(
 
 class DefaultParser:
     def __init__(self) -> None:
-        self.parser = argparse.ArgumentParser()
+        self.parser = argparse.ArgumentParser(prog='saom')
         self.parser.add_argument('pos0')
         self.parser.add_argument('pos1', nargs='+')
-        # self.parser.add_argument('-m')
+        self.parser.add_argument('-e', action='store_true')
 
     def parse_line(self, line: str) -> argparse.Namespace:
         _stderr = sys.stderr
@@ -30,5 +30,5 @@ class DefaultParser:
 
 if __name__ == '__main__':
     dp = DefaultParser()
-    r = dp.parse_line("s 红色高跟鞋 珈乐")
+    r = dp.parse_line("s 红色高跟鞋 珈乐 ")
     print(r)

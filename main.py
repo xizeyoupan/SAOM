@@ -60,7 +60,7 @@ def open_config_window(config_str: str):
     if event in (sg.WIN_CLOSED, '-CANCEL-'):
         pass
     elif event == '-SAVECONFIG-':
-        logger.debug(f'{__file__}:{config_str} save config:{values}')
+        logger.debug(f'{config_str} save config:{values}')
         for k, v in values.items():
             _ = literal_eval(config[config_str][k.strip('-')])
             _['value'] = v

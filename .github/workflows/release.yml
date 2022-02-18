@@ -27,16 +27,16 @@ jobs:
       - name: Set tag
         run: |
           chcp 65001
-          echo ("TAG_NAME=" + ${GITHUB_REF:10}) >> $env:GITHUB_ENV
+          echo ("TAG_NAME=" + ${GITHUB_REF:10}) >> $GITHUB_ENV
 
       - name: Zip dist
         uses: thedoctor0/zip-release@master
         with:
           type: "zip"
-          filename: "SAOM_win64${{ env.TAG_NAME }}.zip"
+          filename: "SAOM_win64$env:TAG_NAME.zip"
           path: ./dist/SAOM_win64
 
       - name: Release
         uses: softprops/action-gh-release@v1
         with:
-          files: "SAOM_win64${{ env.TAG_NAME }}.zip"
+          files: "SAOM_win64$env:TAG_NAME.zip"

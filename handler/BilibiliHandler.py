@@ -2,9 +2,11 @@ import asyncio
 import configparser
 import logging
 import os
+import uuid
 from ast import literal_eval
 from io import BytesIO
 from os.path import dirname
+from utils import get_steam_app_path
 
 import aiohttp
 from pyquery import PyQuery as pq
@@ -31,17 +33,28 @@ class BilibiliHandler(AbstractHandler):
         self.session = aiohttp.ClientSession(
             headers={**headers, 'referer': 'https://www.bilibili.com'})
         self.get_config()
+        self.uuid = uuid.uuid4().hex
+        self.waiting = False
         if self.config['enable']['value']:
             self.start()
 
     def start(self):
         self.__running = True
         self.get_config()
+        self.cfg_path = os.path.join(get_steam_app_path(self.ctx.game.config['id']['value']),
+                                     self.ctx.game.config['directory']['value'], self.ctx.game.config['tocfg']['value'])
+        self.init_choices()
         logger.debug('start.')
 
     def stop(self):
         self.__running = False
         logger.debug('stop.')
+
+    def init_choices(self):
+        for i in range(1, 10):
+            cfg = f'echo "{self.uuid} {i} saom_bilibili_choose"'
+            with open(os.path.join(self.cfg_path, f'saom_bilibili_choice{i}.cfg'), 'w', encoding='utf-8') as f:
+                f.write(cfg)
 
     @classmethod
     @property
@@ -73,19 +86,23 @@ class BilibiliHandler(AbstractHandler):
     def parse(self, line: str):
         if not self.__running or 'saom' not in line:
             return
+
+        if self.uuid in line and self.waiting:
+            index = int(line.split('saom_bilibili_choose')[0].split(' ')[1]) - 1
+            asyncio.create_task(self.single_song(self.video_json, index))
+            return
         line = line.split('saom')[-1]
         namespace = self.ctx.parser.parse_line(line)
         if not namespace:
             return
         if namespace.pos0 == 's' and namespace.pos1:
-            asyncio.create_task(self.single_song(' '.join(namespace.pos1)))
+            asyncio.create_task(self.search(namespace))
 
     def __del__(self):
         asyncio.create_task(self.session.close())
 
-    async def single_song(self, search_key: str) -> None:
+    async def get_search_res(self, search_key: str):
         logger.debug(f'Search {search_key}.')
-        stream = BytesIO()
         self.ctx.game.write_status(
             f'接到指令！ 正在搜索： {search_key}，{self.config["name"]["value"]}')
 
@@ -97,11 +114,33 @@ class BilibiliHandler(AbstractHandler):
                 logger.warning(
                     f'No result for {search_key}.')
                 return
-            chosen_video = video_json[0]
-            bvid = chosen_video['bvid']
-            author = chosen_video['author']
-            d = pq(chosen_video['title'])
-            title = d.text()
+            return video_json
+
+    async def search(self, namespace):
+        search_key = ' '.join(namespace.pos1)
+        video_json = await self.get_search_res(search_key)
+        if not video_json:
+            return
+        if namespace.e:
+            self.video_json = video_json
+            self.waiting = True
+            titles = [f'{i+1}. ' + pq(item['title']).text()
+                      for i, item in enumerate(video_json)]
+            msg = '\u2029'.join(titles)
+            self.ctx.game.write_status(msg[:100], extra=False)
+        else:
+            await self.single_song(video_json)
+
+    async def single_song(self, video_json, index=0) -> None:
+        if index:
+            self.waiting = False
+
+        stream = BytesIO()
+        chosen_video = video_json[index]
+        bvid = chosen_video['bvid']
+        author = chosen_video['author']
+        d = pq(chosen_video['title'])
+        title = d.text()
 
         async with self.session.get('https://api.bilibili.com/x/player/pagelist?bvid={}'.format(bvid)) as resp:
             p = (await resp.json())['data'][0]
